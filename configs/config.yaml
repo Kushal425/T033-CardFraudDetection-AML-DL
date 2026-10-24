@@ -1,0 +1,22 @@
+seed: 42
+paths:
+  raw: data/raw/creditcard.csv
+  processed: data/processed
+  scores: results/scores
+  figures: results/figures
+  tables: results/tables
+  models: results/models
+
+split:
+  train_frac: 0.60   # chronological by Time, no shuffling
+  val_frac: 0.20
+  test_frac: 0.20
+
+feature_set: base    # base | engineered (engineered registered by Apoorva in src/features.py)
+
+drop_duplicates: false  # set true to drop exact-duplicate rows; false = keep + log count only
+
+eval:
+  fpr_budgets: [0.001, 0.005, 0.01]
+  review_fractions: [0.001, 0.005, 0.01]
+  top_k: [50, 100, 200]
