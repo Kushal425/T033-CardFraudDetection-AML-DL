@@ -679,6 +679,7 @@ def run_all_baselines() -> dict:
     timing_info.append({
         "model": "PCA",
         "sweep_time_s": pca_sweep_time,
+        "memory_mb": round((_MODELS_DIR / "pca.joblib").stat().st_size / (1024 * 1024), 3),
         "best_params": f"k={best_k}",
     })
 
@@ -716,6 +717,7 @@ def run_all_baselines() -> dict:
     timing_info.append({
         "model": "Isolation Forest",
         "sweep_time_s": iforest_sweep_time,
+        "memory_mb": round((_MODELS_DIR / "iforest.joblib").stat().st_size / (1024 * 1024), 3),
         "best_params": f"n_est={int(bp['n_estimators'])}, ms={bp['max_samples']}, mf={bp['max_features']}",
     })
 
@@ -751,6 +753,7 @@ def run_all_baselines() -> dict:
     timing_info.append({
         "model": "OC-SVM",
         "sweep_time_s": ocsvm_sweep_time,
+        "memory_mb": round((_MODELS_DIR / "ocsvm.joblib").stat().st_size / (1024 * 1024), 3),
         "best_params": f"nu={bp['nu']}, gamma={bp['gamma']}",
     })
 
@@ -785,6 +788,7 @@ def run_all_baselines() -> dict:
     timing_info.append({
         "model": "LOF",
         "sweep_time_s": lof_sweep_time,
+        "memory_mb": round((_MODELS_DIR / "lof.joblib").stat().st_size / (1024 * 1024), 3),
         "best_params": f"n_neighbors={int(bp['n_neighbors'])}",
     })
 
