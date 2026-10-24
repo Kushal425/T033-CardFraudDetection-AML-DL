@@ -1,0 +1,2 @@
+,legit_mean,legit_median,legit_std,legit_max,fraud_mean,fraud_median,fraud_std,fraud_max,n_zero_amount,pct_zero_amount,n_legit_outliers_IQR,iqr_lower,iqr_upper
+0,88.291,22.0,250.1051,25691.16,122.2113,9.25,256.6833,2125.87,1825,0.6408,31862,-101.45,184.15
