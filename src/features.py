@@ -377,3 +377,99 @@ FEATURE_SETS: dict[str, Callable] = {
 # Register directly into src.data.FEATURE_SETS for immediate runtime discovery
 _DATA_FEATURE_SETS.update(FEATURE_SETS)
 
+
+# =============================================================================
+# Stage Runner for run_all.py
+# =============================================================================
+
+def run_feature_stage() -> None:
+    """
+    Entry point invoked by run_all.py to execute the feature engineering stage.
+    Evaluates candidate feature sets, validates leakage-free pipelines,
+    and updates comparison tables/figures.
+    """
+    import time
+    from pathlib import Path
+    import matplotlib.pyplot as plt
+    from sklearn.mixture import GaussianMixture
+    from src.data import load_raw, chronological_split
+    from src.metrics import pr_auc, roc_auc, recall_at_fpr
+    from src.config import CFG, get_repo_root
+
+    root = get_repo_root()
+    tables_dir = root / CFG["paths"]["tables"]
+    figures_dir = root / CFG["paths"]["figures"]
+    tables_dir.mkdir(parents=True, exist_ok=True)
+    figures_dir.mkdir(parents=True, exist_ok=True)
+
+    _logger.info("Executing Phase 1 Feature Engineering Stage...")
+    df = load_raw()
+    train_df, val_df, test_df = chronological_split(df)
+
+    candidates = [
+        ("raw", "Raw (V1-V28, Amount, Time)", build_raw),
+        ("base", "Base (V1-V28, log1p Amount, cyclic Time)", _scale_and_package(_compute_base_tabular(train_df), _compute_base_tabular(val_df), _compute_base_tabular(test_df), train_df, val_df, test_df, "base")),
+        ("fe_robust_amount", "Amount: RobustScaler (Median/IQR)", build_robust_amount),
+        ("fe_yeojohnson_amount", "Amount: Yeo-Johnson PowerTransform", build_yeojohnson_amount),
+        ("fe_pca_whitened", "V-Features: PCA Whitened (Sphered)", build_pca_whitened),
+        ("fe_norm_outliers", "Base + Geometric Norms (||V||_2, Outliers, Max)", build_norm_outliers),
+        ("fe_time_risk", "Base + Circadian & Micro-Amount Flags", build_time_risk),
+        ("engineered", "Engineered (Winner: Norms + Pruned V22/V23/V25)", build_engineered),
+    ]
+
+    rows = []
+    for key, label, builder in candidates:
+        splits = builder(train_df, val_df, test_df) if callable(builder) else builder
+        t0 = time.time()
+        gmm = GaussianMixture(n_components=3, covariance_type="diag", reg_covar=1e-4, random_state=42, n_init=1, max_iter=200)
+        gmm.fit(splits.X_train_legit)
+        train_time = time.time() - t0
+
+        val_nll = -gmm.score_samples(splits.X_val)
+        pr = pr_auc(splits.y_val, val_nll)
+        roc = roc_auc(splits.y_val, val_nll)
+        rec05 = recall_at_fpr(splits.y_val, val_nll, 0.005)
+        rec01 = recall_at_fpr(splits.y_val, val_nll, 0.001)
+
+        rows.append({
+            "feature_set": key,
+            "description": label,
+            "dimension": splits.X_train_legit.shape[1],
+            "val_pr_auc": round(pr, 5),
+            "val_roc_auc": round(roc, 5),
+            "val_recall@0.5%": round(rec05, 5),
+            "val_recall@0.1%": round(rec01, 5),
+            "train_time_sec": round(train_time, 3),
+        })
+
+    res_df = pd.DataFrame(rows)
+    out_table = tables_dir / "fe_comparison.csv"
+    res_df.to_csv(out_table, index=False)
+    _logger.info("Saved feature comparison table to %s", out_table)
+
+    # Plot comparisons
+    plt.style.use("seaborn-v0_8-whitegrid" if "seaborn-v0_8-whitegrid" in plt.style.available else "default")
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
+    colors = ["#4A90E2" if k != "engineered" else "#D0021B" for k in res_df["feature_set"]]
+
+    ax1.barh(res_df["description"], res_df["val_pr_auc"], color=colors, edgecolor="black", alpha=0.85)
+    ax1.set_xlabel("Validation PR-AUC (GMM K=3, Diag)")
+    ax1.set_title("Feature Set Comparison: PR-AUC (Validation)")
+    for i, v in enumerate(res_df["val_pr_auc"]):
+        ax1.text(v + 0.001, i, f"{v:.4f}", va="center", fontweight="bold" if res_df.loc[i, "feature_set"] == "engineered" else "normal")
+    ax1.set_xlim(0, max(res_df["val_pr_auc"]) * 1.18)
+
+    ax2.barh(res_df["description"], res_df["val_recall@0.5%"] * 100, color=colors, edgecolor="black", alpha=0.85)
+    ax2.set_xlabel("Validation Recall @ FPR = 0.5% (%)")
+    ax2.set_title("Feature Set Comparison: Recall @ FPR=0.5%")
+    for i, v in enumerate(res_df["val_recall@0.5%"] * 100):
+        ax2.text(v + 0.8, i, f"{v:.1f}%", va="center", fontweight="bold" if res_df.loc[i, "feature_set"] == "engineered" else "normal")
+    ax2.set_xlim(0, max(res_df["val_recall@0.5%"] * 100) * 1.18)
+
+    plt.tight_layout()
+    out_fig = figures_dir / "fe_comparison.png"
+    plt.savefig(out_fig, dpi=300, bbox_inches="tight")
+    plt.close()
+    _logger.info("Saved feature comparison figure to %s", out_fig)
+
+
