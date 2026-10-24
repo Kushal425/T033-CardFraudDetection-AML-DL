@@ -1,0 +1,139 @@
+% reports/ieee_report/sections/p1_baselines.tex
+% Author: Vani Rudra (Task 03 — Classical ML Baselines)
+% Phase 1: Machine Learning only.
+%
+% Describes the classical anomaly-detection baselines used as fair
+% comparisons against the GMM density estimator.
+
+\subsection{Classical Anomaly-Detection Baselines}
+\label{sec:baselines}
+
+To provide a rigorous fair comparison against the Gaussian Mixture Model
+(Sec.~\ref{sec:gmm}), we implement four classical anomaly detectors plus
+two reference baselines.  All models are trained exclusively on
+\textbf{legitimate training transactions}; fraud labels are used only for
+hyper-parameter selection on the validation split and for final evaluation
+on the held-out test split.
+
+% ─── Isolation Forest ────────────────────────────────────────────────────
+\subsubsection{Isolation Forest}
+\label{sec:iforest}
+
+The Isolation Forest~\cite{liu2008isolation} exploits the observation that
+anomalies are ``few and different'': a random recursive partitioning tree
+isolates them in fewer splits.  For each sample~$\mathbf{x}$, define
+$h(\mathbf{x})$ as the path length (number of splits) required to isolate
+it.  The anomaly score is
+\begin{equation}
+    s(\mathbf{x}, n) = 2^{-E[h(\mathbf{x})]\,/\,c(n)},
+    \label{eq:iforest_score}
+\end{equation}
+where $c(n) = 2H(n-1) - 2(n-1)/n$ is the average path length of an
+unsuccessful search in a BST of $n$ elements and $H(\cdot)$ is the harmonic
+number.  Scores close to~1 indicate anomalies; scores close to~0.5 indicate
+normal points.
+
+We search over \texttt{n\_estimators} $\in \{100, 200, 500\}$,
+\texttt{max\_samples} $\in \{256, 1024, \text{auto}\}$, and
+\texttt{max\_features} $\in \{0.5, 1.0\}$, selecting the configuration that
+maximises validation PR-AUC.  Contamination is \emph{not} used during fitting.
+
+% ─── PCA Reconstruction Error ────────────────────────────────────────────
+\subsubsection{PCA Reconstruction Error}
+\label{sec:pca_recon}
+
+Given the top-$k$ principal components $\mathbf{U}_k$ of the legitimate
+training covariance, the projection $\hat{\mathbf{x}} =
+\mathbf{U}_k \mathbf{U}_k^\top \mathbf{x}$ reconstructs the part of
+$\mathbf{x}$ in the principal subspace.  The anomaly score is the squared
+reconstruction error:
+\begin{equation}
+    s(\mathbf{x}) = \|\mathbf{x} - \hat{\mathbf{x}}\|^2
+                  = \mathbf{x}^\top (\mathbf{I} - \mathbf{U}_k \mathbf{U}_k^\top) \mathbf{x}.
+    \label{eq:pca_recon}
+\end{equation}
+This equals the squared Mahalanobis distance in the \emph{minor}
+(residual) subspace when the covariance eigenvalues are uniform there, thus
+connecting PCA reconstruction to probabilistic outlier detection.
+
+We sweep $k$ from~1 to~31 (the full feature dimensionality), also noting
+the $k$ values required for 90\%, 95\% and 99\% explained variance.  The
+value of~$k$ that maximises validation PR-AUC is selected.
+
+% ─── One-Class SVM ───────────────────────────────────────────────────────
+\subsubsection{One-Class SVM (RBF Kernel)}
+\label{sec:ocsvm}
+
+The One-Class SVM~\cite{scholkopf2001estimating} maps data into a
+high-dimensional feature space via the RBF kernel
+$K(\mathbf{x},\mathbf{x}') = \exp(-\gamma\|\mathbf{x}-\mathbf{x}'\|^2)$,
+then finds the maximum-margin hyperplane separating the data from the origin.
+The parameter $\nu \in (0,1]$ provides an upper bound on the fraction of
+outliers and a lower bound on the fraction of support vectors.
+
+The anomaly score is $s(\mathbf{x}) = -f(\mathbf{x})$, where $f$ is the
+signed distance to the decision boundary (positive for inliers).  We search
+$\nu \in \{0.001, 0.01, 0.05\}$ and $\gamma \in \{\text{scale}, 0.01, 0.1\}$.
+
+Because OC-SVM has $O(n^2 d)$ to $O(n^3 d)$ fitting complexity, we fit on a
+seeded random sub-sample of 40{,}000 legitimate training rows.  This is a
+standard trade-off between computational cost and model fidelity.
+
+% ─── Local Outlier Factor ────────────────────────────────────────────────
+\subsubsection{Local Outlier Factor}
+\label{sec:lof}
+
+LOF~\cite{breunig2000lof} computes a local reachability density for each point
+relative to its $k$-nearest neighbours.  The LOF score is the ratio of a
+point's density to the average density of its neighbours; scores
+significantly greater than~1 indicate anomalies whose local neighbourhood
+is denser than the point itself.
+
+We use LOF in \emph{novelty} mode, fitting only on legitimate training data
+(sub-sampled to 40{,}000 rows) and scoring new data.
+$k \in \{10, 20, 50\}$ is swept with validation PR-AUC selection.
+
+% ─── Reference Baselines ─────────────────────────────────────────────────
+\subsubsection{Reference Baselines}
+\label{sec:ref_baselines}
+
+Two reference baselines bracket performance:
+\begin{enumerate}
+    \item \textbf{Random scores}: uniform $U(0,1)$ scores; PR-AUC should
+          equal the base rate ($\approx 0.1\%$), serving as a sanity check.
+    \item \textbf{$|\text{Amount}|$ score}: the absolute (scaled) transaction
+          amount, testing whether high-value transactions are disproportionately
+          fraudulent.
+\end{enumerate}
+
+% ─── Comparison to GMM ───────────────────────────────────────────────────
+\subsubsection{Comparison to GMM}
+\label{sec:compare_gmm}
+
+The GMM (Sec.~\ref{sec:gmm}) is an explicit parametric density model:
+it assumes the legitimate manifold follows a mixture of Gaussians and uses
+the negative log-likelihood as the anomaly score.  This provides a
+probabilistically principled score with well-understood calibration.
+
+In contrast:
+\begin{itemize}
+    \item \textbf{Isolation Forest} is a non-parametric geometric method
+          based on random axis-parallel partitions; it is robust to scaling
+          and feature interactions but cannot estimate densities.
+    \item \textbf{PCA reconstruction error} is a linear method that captures
+          variance in the principal subspace; it fails when anomalies lie
+          \emph{within} the principal subspace but differ in the residual.
+    \item \textbf{OC-SVM} operates in kernel feature space and can model
+          nonlinear boundaries, but is sensitive to kernel hyperparameters
+          and scales poorly ($O(n^2)$--$O(n^3)$).
+    \item \textbf{LOF} captures local density variations, making it effective
+          for clusters of varying density, but is sensitive to the choice
+          of $k$ and degrades in high dimensions.
+\end{itemize}
+
+Each approach has complementary failure modes: GMM struggles with heavy tails
+and high dimensionality; Isolation Forest is weakened by irrelevant features
+(axis-parallel splits); PCA requires anomalies to project into the minor
+subspace; OC-SVM and LOF suffer from the curse of dimensionality.  Comparing
+all approaches reveals which inductive biases are most appropriate for the
+credit-card fraud dataset.
