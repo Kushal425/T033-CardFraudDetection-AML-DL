@@ -1,0 +1,11 @@
+,missed_rank,val_index,anomaly_score_nll,l2_dist_from_legit_mean,max_feature_deviation,blending_features,failure_mechanism
+0,1,33195,12.6483,4.4476,V14 (-2.21),"V28 (+0.01), V27 (-0.06), V2 (-0.10)",Concealed within 1-sigma legitimate core; all latent coords typical.
+1,2,21803,13.6519,5.4749,V14 (-2.49),"V19 (+0.02), V27 (-0.04), V21 (+0.07)",Concealed within 1-sigma legitimate core; all latent coords typical.
+2,3,12108,20.6738,7.9852,V14 (-4.03),"V13 (-0.01), V7 (-0.01), V8 (+0.03)",Concealed within 1-sigma legitimate core; all latent coords typical.
+3,4,24499,25.2798,7.3886,V4 (+3.50),"V12 (+0.03), sin_time (+0.03), V5 (-0.08)",Concealed within 1-sigma legitimate core; all latent coords typical.
+4,5,48141,30.1787,3.42,V19 (+1.30),"V4 (+0.01), V8 (+0.03), V28 (+0.03)",Concealed within 1-sigma legitimate core; all latent coords typical.
+5,6,51535,33.4203,5.682,V15 (-2.13),"V6 (+0.03), V14 (+0.05), V8 (-0.14)",Concealed within 1-sigma legitimate core; all latent coords typical.
+6,7,5165,38.6035,11.1827,V20 (+5.45),"V17 (+0.04), V19 (+0.10), V6 (-0.12)",Concealed within 1-sigma legitimate core; all latent coords typical.
+7,8,20383,46.3531,7.4652,V26 (+5.57),"V2 (+0.01), V15 (+0.11), V7 (+0.19)",Concealed within 1-sigma legitimate core; all latent coords typical.
+8,9,26702,46.8798,7.2937,V7 (+3.69),"V27 (-0.01), V20 (-0.08), sin_time (-0.08)",Concealed within 1-sigma legitimate core; all latent coords typical.
+9,10,43891,48.1171,5.6254,V13 (-2.18),"V12 (+0.01), V7 (-0.01), V11 (+0.07)",Concealed within 1-sigma legitimate core; all latent coords typical.

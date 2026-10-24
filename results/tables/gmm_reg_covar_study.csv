@@ -1,0 +1,15 @@
+,covariance_type,reg_covar,val_pr_auc,mean_condition_number,status
+0,diag,1e-07,0.07689,5227608.07,Stable
+1,full,1e-07,0.7113,97542273.09,Stable
+2,diag,1e-06,0.07896,630606.36,Stable
+3,full,1e-06,0.70462,9952858.23,Stable
+4,diag,1e-05,0.07382,63253.86,Stable
+5,full,1e-05,0.70308,1069138.82,Stable
+6,diag,0.0001,0.064,5485.51,Stable
+7,full,0.0001,0.7034,129427.34,Stable
+8,diag,0.001,0.06512,908.87,Stable
+9,full,0.001,0.7098,15009.67,Stable
+10,diag,0.01,0.07024,198.77,Stable
+11,full,0.01,0.67765,2188.96,Stable
+12,diag,0.1,0.09532,57.64,Stable
+13,full,0.1,0.28379,276.71,Stable

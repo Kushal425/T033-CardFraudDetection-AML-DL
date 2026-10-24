@@ -1,0 +1,9 @@
+feature_set,description,dimension,val_pr_auc,val_roc_auc,val_recall@0.5%,val_recall@0.1%,train_time_sec
+raw,"Raw (V1-V28, Amount, Time)",30,0.04315,0.94909,0.36842,0.0,0.913
+base,"Base (V1-V28, log1p Amount, cyclic Time)",31,0.04659,0.94918,0.40351,0.0,0.646
+fe_robust_amount,Amount: RobustScaler (Median/IQR),31,0.04359,0.94795,0.36842,0.0,0.779
+fe_yeojohnson_amount,Amount: Yeo-Johnson PowerTransform,31,0.04509,0.94809,0.38596,0.0,0.698
+fe_pca_whitened,V-Features: PCA Whitened (Sphered),31,0.04659,0.94918,0.40351,0.0,0.669
+fe_norm_outliers,"Base + Geometric Norms (||V||_2, Outliers, Max)",34,0.05928,0.94902,0.49123,0.01754,1.756
+fe_time_risk,Base + Circadian & Micro-Amount Flags,33,0.0443,0.95085,0.36842,0.0,1.224
+engineered,Engineered (Winner: Norms + Pruned V22/V23/V25),31,0.06934,0.95198,0.49123,0.01754,1.703
