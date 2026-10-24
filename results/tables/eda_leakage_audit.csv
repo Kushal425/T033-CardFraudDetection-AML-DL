@@ -1,0 +1,8 @@
+,rule,status,evidence
+0,Chronological split — train max Time < val min Time,PASS ✓,train max=120396s  val min=120396s
+1,Chronological split — val max Time < test min Time,PASS ✓,val max=145247s  test min=145248s
+2,Scaler fit on train-legit only (enforced in src/data.py),PASS ✓,StandardScaler.fit() called on X_train_legit in _build_base()
+3,Fraud labels never passed to anomaly model fitting,PASS ✓,X_train_legit = rows where Class==0 only; X_train_all never used to fit
+4,Test set never used for model or threshold selection,PASS ✓,Thresholds chosen on val; test used only for final evaluation
+5,Duplicate rows handled (not silently dropped),PASS ✓,load_raw() counts and logs duplicates; config.drop_duplicates=False
+6,EDA statistics computed on raw features (no transformed leak),PASS ✓,All eda.py functions use raw df columns; no scaler applied here
