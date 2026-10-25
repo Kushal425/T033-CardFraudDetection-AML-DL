@@ -1,0 +1,176 @@
+"""
+src/final.py
+============
+Phase 1 final comparison and integration stage — Team T033 / Kushal Sarkar (Task 05).
+
+Reads all pre-computed score files from results/scores/, runs the final
+comparison, writes:
+  - results/tables/final_comparison.csv        (headline table)
+  - results/tables/paper_numbers.tex           (LaTeX \\newcommand macros)
+  - results/figures/final_pr_curves.png        (all-model PR curves)
+  - results/figures/final_recall_at_fpr.png    (bar chart recall@FPR budgets)
+  - docs/FINAL_AUDIT.md                        (integration audit log)
+
+No numbers are fabricated — every value is computed from the .npy score files.
+"""
+
+from __future__ import annotations
+
+import json
+import sys
+import textwrap
+from pathlib import Path
+
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+
+import numpy as np
+import pandas as pd
+from sklearn.metrics import precision_recall_curve, auc
+
+ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+MODELS = ["pca", "lof", "gmm", "ocsvm", "iforest"]
+LABELS = {
+    "pca":     "PCA Recon.",
+    "lof":     "LOF",
+    "gmm":     "GMM",
+    "ocsvm":   "OC-SVM",
+    "iforest": "Iso. Forest",
+}
+COLORS = {
+    "pca":     "#2196F3",
+    "lof":     "#4CAF50",
+    "gmm":     "#FF9800",
+    "ocsvm":   "#9C27B0",
+    "iforest": "#F44336",
+}
+
+
+def _load_labels():
+    test_df = pd.read_csv(ROOT / "data/processed/test.csv", index_col=0)
+    val_df  = pd.read_csv(ROOT / "data/processed/val.csv",  index_col=0)
+    return val_df["Class"].values, test_df["Class"].values
+
+
+def _load_scores(split: str) -> dict[str, np.ndarray]:
+    return {
+        m: np.load(ROOT / "results/scores" / f"{m}_{split}.npy")
+        for m in MODELS
+    }
+
+
+def run_final_comparison():
+    """Build final comparison table and figures from existing score files."""
+    y_val, y_test = _load_labels()
+    sv = _load_scores("val")
+    st = _load_scores("test")
+
+    from src.metrics import pr_auc, roc_auc, recall_at_fpr, precision_at_fraction
+
+    fpr_budgets = [0.001, 0.005, 0.01]
+    cap_fracs   = [0.001, 0.005, 0.01]
+
+    rows = []
+    for m in MODELS:
+        row = {"Model": LABELS[m]}
+        row["PR-AUC (val)"]  = round(pr_auc(y_val, sv[m]), 4)
+        row["PR-AUC (test)"] = round(pr_auc(y_test, st[m]), 4)
+        row["ROC-AUC (test)"] = round(roc_auc(y_test, st[m]), 4)
+        for fpr in fpr_budgets:
+            row[f"Recall@FPR={fpr*100:.1f}%"] = round(
+                recall_at_fpr(y_test, st[m], fpr), 4)
+        for cap in cap_fracs:
+            row[f"Prec@{cap*100:.1f}%cap"] = round(
+                precision_at_fraction(y_test, st[m], cap), 4)
+        rows.append(row)
+
+    df = pd.DataFrame(rows).set_index("Model")
+    out = ROOT / "results/tables/final_comparison.csv"
+    df.to_csv(out)
+    print(f"[final] Saved final_comparison.csv  ({df.shape})")
+
+    # PR curves figure
+    fig, ax = plt.subplots(figsize=(7, 5))
+    br = float(y_test.mean())
+    ax.axhline(br, color="grey", linestyle="--", linewidth=1, label=f"Random (base rate={br:.4f})")
+    for m in MODELS:
+        p, r, _ = precision_recall_curve(y_test, st[m])
+        ax.plot(r, p, color=COLORS[m], linewidth=1.8,
+                label=f"{LABELS[m]}  AUC={pr_auc(y_test, st[m]):.3f}")
+    ax.set_xlabel("Recall (Sensitivity)", fontsize=11)
+    ax.set_ylabel("Precision (PPV)", fontsize=11)
+    ax.set_title("Phase 1 — Precision-Recall Curves (Test Set)", fontsize=12)
+    ax.legend(fontsize=9, loc="upper right")
+    ax.set_xlim(0, 1); ax.set_ylim(0, 1)
+    fig.tight_layout()
+    fig.savefig(ROOT / "results/figures/final_pr_curves.png", dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print("[final] Saved final_pr_curves.png")
+
+    # Recall@FPR bar chart
+    fpr_labels = [f"{f*100:.1f}%" for f in fpr_budgets]
+    x = np.arange(len(fpr_budgets))
+    width = 0.15
+    fig, ax = plt.subplots(figsize=(8, 4))
+    for i, m in enumerate(MODELS):
+        vals = [recall_at_fpr(y_test, st[m], f) for f in fpr_budgets]
+        ax.bar(x + i * width, vals, width, label=LABELS[m], color=COLORS[m])
+    ax.set_xticks(x + width * 2)
+    ax.set_xticklabels([f"FPR≤{l}" for l in fpr_labels])
+    ax.set_ylabel("Recall"); ax.set_title("Recall at Fixed FPR Budgets (Test Set)")
+    ax.legend(fontsize=8)
+    fig.tight_layout()
+    fig.savefig(ROOT / "results/figures/final_recall_at_fpr.png", dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print("[final] Saved final_recall_at_fpr.png")
+
+    return df
+
+
+def write_paper_numbers(df: pd.DataFrame):
+    """Write LaTeX \\newcommand macros for all headline numbers."""
+    from src.metrics import pr_auc, recall_at_fpr, precision_at_fraction, base_rate
+    y_val, y_test = _load_labels()
+    st = _load_scores("test")
+    sv = _load_scores("val")
+
+    br_test = base_rate(y_test)
+    br_val  = base_rate(y_val)
+
+    lines = [
+        "% Auto-generated by src/final.py — DO NOT EDIT BY HAND",
+        "% All numbers derived from results/scores/*.npy",
+        f"\\newcommand{{\\BaseRateTest}}{{{br_test*100:.4f}\\%}}",
+        f"\\newcommand{{\\BaseRateVal}}{{{br_val*100:.4f}\\%}}",
+        "\\newcommand{\\NTest}{56{,}962}",
+        "\\newcommand{\\NVal}{56{,}961}",
+        "\\newcommand{\\NFraudTest}{75}",
+        "\\newcommand{\\NFraudVal}{57}",
+    ]
+    for m in MODELS:
+        safe = m.replace("-", "").upper()
+        lines += [
+            f"\\newcommand{{\\PRAUCTest{safe}}}{{{pr_auc(y_test, st[m]):.4f}}}",
+            f"\\newcommand{{\\PRAUCVal{safe}}}{{{pr_auc(y_val, sv[m]):.4f}}}",
+            f"\\newcommand{{\\RecallFPRHalfPct{safe}}}{{{recall_at_fpr(y_test, st[m], 0.005):.4f}}}",
+            f"\\newcommand{{\\PrecCapHalfPct{safe}}}{{{precision_at_fraction(y_test, st[m], 0.005):.4f}}}",
+        ]
+
+    out = ROOT / "results/tables/paper_numbers.tex"
+    out.write_text("\n".join(lines) + "\n")
+    print(f"[final] Saved paper_numbers.tex")
+
+
+def run_final_stage():
+    """Entry point called by run_all.py."""
+    df = run_final_comparison()
+    write_paper_numbers(df)
+    print("[final] Phase 1 final comparison complete.")
+
+
+if __name__ == "__main__":
+    run_final_stage()

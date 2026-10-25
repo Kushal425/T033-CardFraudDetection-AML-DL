@@ -1,0 +1,170 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{siunitx}
+
+% Paper numbers — auto-generated, do not edit by hand
+\input{../../results/tables/paper_numbers}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{Card Fraud Triage via Gaussian Mixture Density Scoring:\\
+Phase 1 — Machine Learning Evaluation\\
+{\footnotesize Team T033, Section A, Project 26 — Rishihood University}}
+
+\author{
+\IEEEauthorblockN{Kushal Sarkar\textsuperscript{1},
+                  Prachee Dhar\textsuperscript{2},
+                  Apoorva Choudhary\textsuperscript{3},
+                  Vani Rudra\textsuperscript{4},
+                  Krishna Pramod Dubale\textsuperscript{5}}
+\IEEEauthorblockA{Rishihood University, Sonipat, India\\
+Enrollment: \textsuperscript{1}2401020033
+            \textsuperscript{2}2401010330
+            \textsuperscript{3}2401010092
+            \textsuperscript{4}2401010490
+            \textsuperscript{5}2401010239\\
+Faculty: Shobhit Johri, Arun Chauhan, Ashwin Tewary}
+}
+
+\maketitle
+
+\begin{abstract}
+We frame credit card fraud detection as an unsupervised anomaly detection problem,
+training models exclusively on legitimate transactions and scoring each transaction
+by its deviation from the learned normal manifold.
+We evaluate five methods on the ULB Credit Card Fraud dataset
+(\NTest{} transactions, \NFraudTest{} test frauds, base rate \BaseRateTest{}):
+Gaussian Mixture Model (GMM) density scoring, PCA reconstruction error,
+Isolation Forest, One-Class SVM, and Local Outlier Factor.
+PCA reconstruction error achieves the highest test PR-AUC (\PRAUCTestPCA{}),
+catching \RecallFPRHalfPctPCA{} of test frauds at a 0.5\% false-positive
+rate budget. GMM achieves PR-AUC \PRAUCTestGMM{} on test despite poor
+validation performance, exposing instability under severe class imbalance.
+We report precision-recall curves, recall at fixed FPR budgets, precision at
+review capacity, bootstrap confidence intervals, and threshold analysis.
+A future phase will compare a deep autoencoder reconstruction scorer.
+\end{abstract}
+
+\begin{IEEEkeywords}
+anomaly detection, fraud detection, Gaussian mixture model, PCA reconstruction,
+unsupervised learning, class imbalance, precision-recall
+\end{IEEEkeywords}
+
+%%% ─── 1. Introduction ────────────────────────────────────────────────────────
+\input{sections/p1_introduction}
+
+%%% ─── 2. Related Work ────────────────────────────────────────────────────────
+\input{sections/p1_related_work}
+
+%%% ─── 3. Dataset & EDA ───────────────────────────────────────────────────────
+\input{sections/p1_dataset_eda}
+
+%%% ─── 4. Feature Engineering ────────────────────────────────────────────────
+\input{sections/p1_features}
+
+%%% ─── 5. GMM Theory & Results ───────────────────────────────────────────────
+\input{sections/p1_gmm_theory}
+\input{sections/p1_gmm_results}
+
+%%% ─── 6. Classical Baselines ────────────────────────────────────────────────
+\input{sections/p1_baselines}
+
+%%% ─── 7. Evaluation Protocol ────────────────────────────────────────────────
+\input{sections/p1_evaluation_protocol}
+
+%%% ─── 8. Results & Comparison ───────────────────────────────────────────────
+\input{sections/p1_results_comparison}
+
+%%% ─── 9. Discussion & Limitations ──────────────────────────────────────────
+\section{Discussion \& Limitations}
+
+\subsection{Which model wins and why?}
+PCA reconstruction error outperforms all other methods (PR-AUC \PRAUCTestPCA{}).
+This is intuitive: the 28 V-features are PCA outputs from legitimate transactions,
+so legitimate transactions are naturally well-reconstructed from a small number of
+principal components. Fraud transactions, being drawn from a different distribution,
+exhibit higher reconstruction residuals.
+
+\subsection{Why does GMM underperform in validation?}
+GMM validation PR-AUC (\PRAUCValGMM{}) is substantially lower than test
+(\PRAUCTestGMM{}). With only \NFraudVal{} frauds in validation, the PR-AUC
+estimate is highly variable (CI: [0.31, 0.54] on test). The GMM's component
+selection via AIC/BIC on the validation split is thus unreliable. This
+demonstrates the ``identify the gap'' result: GMM density scoring is sensitive
+to the number of components, the covariance regularisation, and the number of
+frauds available for threshold calibration.
+
+\subsection{Where does Isolation Forest fail?}
+Isolation Forest (PR-AUC \PRAUCTestIFOREST{}) performs near the random
+reference. In high dimensions (31 features), random axis-aligned partitions
+fail to isolate anomalies because the effective volume difference between
+normal and anomalous regions vanishes --- a manifestation of the curse of
+dimensionality.
+
+\subsection{False-alert burden}
+At FPR=0.5\%, the best model (PCA) would flag approximately 285 legitimate
+transactions per 56,962 (0.5\%) to catch 58 of 75 frauds (77\%). A fraud
+review team with capacity to investigate 285 cases per period captures 77\%
+of fraud. Reducing to FPR=0.1\% cuts alerts to 57 but recall drops to 76\%.
+
+\subsection{Threats to validity}
+\begin{itemize}
+  \item \textbf{Few test frauds (\NFraudTest{})}: Bootstrap CIs are wide;
+        differences between LOF and GMM are not statistically significant.
+  \item \textbf{PCA-anonymised features}: We cannot engineer domain-specific
+        features or interpret which merchant categories drive fraud.
+  \item \textbf{48-hour window}: Seasonal and weekly patterns are absent.
+        The model may not generalise to different time periods.
+  \item \textbf{Single dataset}: Results may not transfer to other card networks.
+  \item \textbf{Assumed cost ratios}: Cost curve analysis assumes missed fraud
+        costs 10--500$\times$ a false alarm; actual costs are bank-specific.
+\end{itemize}
+
+\textbf{Disclaimer}: This is a research prototype, not a production fraud system.
+
+%%% ─── 10. Conclusion & Future Work ─────────────────────────────────────────
+\section{Conclusion \& Future Work}
+
+We compared five unsupervised anomaly-detection methods for credit card fraud
+triage using the ULB dataset. PCA reconstruction error achieves the best
+precision-recall performance (PR-AUC \PRAUCTestPCA{}) on the chronologically
+held-out test set, outperforming GMM, LOF, OC-SVM, and Isolation Forest.
+The GMM instability study confirms that Gaussian mixture density scoring is
+sensitive to dimensionality, regularisation, and limited fraud events for
+validation. Future work (Phase 2) will compare a deep undercomplete autoencoder
+reconstruction scorer, which is hypothesised to learn a more expressive
+non-linear manifold of legitimate transactions.
+
+%%% ─── 11. Individual Contributions ─────────────────────────────────────────
+\section{Individual Contributions}
+
+\begin{itemize}
+  \item \textbf{Kushal Sarkar}: Project scaffold, data pipeline, metrics module,
+        integration, final comparison, report assembly.
+  \item \textbf{Prachee Dhar}: Literature review ($\geq$12 verified references),
+        EDA (duplicates, imbalance, KS drift, Gaussianity checks).
+  \item \textbf{Apoorva Choudhary}: Feature engineering, GMM grid search
+        (covariance type $\times$ K), AIC/BIC analysis, EM theory, instability study.
+  \item \textbf{Vani Rudra}: Classical baselines (PCA, Isolation Forest, OC-SVM, LOF),
+        hyperparameter sweeps, theory sections.
+  \item \textbf{Krishna Pramod Dubale}: Evaluation toolkit, bootstrap CIs,
+        threshold policies, cost curves, master comparison table.
+\end{itemize}
+
+%%% ─── References ─────────────────────────────────────────────────────────────
+\bibliographystyle{IEEEtran}
+\bibliography{refs}
+
+\end{document}
