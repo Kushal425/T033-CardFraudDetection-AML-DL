@@ -199,7 +199,7 @@ A thorough audit of the published literature reveals several pervasive methodolo
 
 ## References
 
-*(All references cataloged and verified in `reports/refs_prachee.bib`)*
+*(All references cataloged and verified in canonical `reports/ieee_report/refs.bib`)*
 
 1. [VERIFY] Akaike, H. (1974). A new look at the statistical model identification. *IEEE Transactions on Automatic Control*, 19(6), 716-723.
 2. [VERIFY] Carcillo, F., Dal Pozzolo, A., Le Borgne, Y.-A., Caelen, O., Mazzer, Y., & Bontempi, G. (2018). SCARFF: a framework for addressing drift and imbalanced data in credit card fraud detection. *Proceedings of the 4th ACM SIGBD*, 1-8.

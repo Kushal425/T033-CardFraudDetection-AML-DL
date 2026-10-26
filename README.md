@@ -7,6 +7,15 @@
 
 Credit card fraud is a severe, highly imbalanced classification problem: genuine fraud represents only ~0.172 % of all transactions in the ULB dataset. Rather than treating this as standard binary classification, this project frames it as **anomaly detection**: models are trained exclusively on legitimate transactions and score each new transaction by how unusual it is relative to the learned normal distribution. Phase 1 compares a **Gaussian Mixture Model (GMM)** density scorer against classical baselines (Isolation Forest, One-Class SVM, LOF, PCA reconstruction). Phase 2 (future) will additionally compare an autoencoder reconstruction-error scorer. Fair comparison is enforced by using the same legitimate-only training set and an untouched mixed test set, with thresholds selected on a held-out validation set.
 
+## Dataset
+
+- **Source:** [Credit Card Fraud Detection Dataset on Kaggle](https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud) (ULB Machine Learning Group)
+- **Scale:** 284,807 transactions across 48 continuous hours (September 2013).
+- **Class Imbalance:** 492 fraud cases (base rate: **0.1727%** or 1 fraud per 578 legitimate transactions).
+- **Features:** 30 numerical input features (V1–V28 PCA projections for cardholder confidentiality, plus raw `Time` and `Amount`). Target is binary `Class` ($1 = \text{fraud}, 0 = \text{legitimate}$).
+- **Data Hygiene:** Strictly non-overlapping chronological partitioning (60% train, 20% validation, 20% test) with scalers fit only on legitimate training records to eliminate data leakage.
+- **Local Location:** Expected at `data/raw/creditcard.csv` (excluded from git via `.gitignore`).
+
 ## Team
 
 | Name | Enrollment | Phase 1 Role | Phase 2 Role |
@@ -27,35 +36,53 @@ T033-CardFraudDetection-AML-DL/
 ├── src/
 │   ├── config.py                # loads config.yaml
 │   ├── data.py                  # load_raw, chronological_split, get_features
+│   ├── features.py              # feature engineering pipelines
+│   ├── gmm_model.py             # GMM training, AIC/BIC, instability study
+│   ├── baselines.py             # PCA, Isolation Forest, OC-SVM, LOF baselines
+│   ├── evaluation.py            # bootstrap CI, threshold policies, cost curves
+│   ├── final.py                 # final model comparisons and paper numbers
 │   ├── metrics.py               # all evaluation metrics (single source of truth)
-│   ├── utils.py                 # seed, logger, score/table/figure I/O
-│   ├── features.py              # (Apoorva) engineered feature set
-│   ├── gmm_model.py             # (Apoorva) GMM training, AIC/BIC, scores
-│   └── evaluation.py            # (Krishna) bootstrap CI, threshold policies
+│   └── utils.py                 # seed, logger, score/table/figure I/O
 ├── tests/
 │   ├── test_no_leakage.py       # time ordering, scaler mean, no fraud in legit
-│   └── test_metrics.py          # unit tests for src/metrics.py
+│   ├── test_metrics.py          # unit tests for src/metrics.py
+│   ├── test_evaluation.py       # evaluation module verification
+│   └── test_score_contract.py   # contract tests for all 14 score arrays
 ├── notebooks/
-│   ├── 01_eda.ipynb             # (Prachee) EDA and literature
-│   ├── 02_feature_engineering.ipynb  # (Apoorva)
-│   ├── 03_gmm_baseline.ipynb    # (Apoorva)
-│   ├── 04_classical_baselines.ipynb  # (Vani)
-│   └── 05_evaluation.ipynb      # (Krishna)
+│   ├── 01_literature_and_eda.ipynb      # EDA and literature
+│   ├── 02_feature_engineering.ipynb     # Feature transformations
+│   ├── 03_gmm_baseline.ipynb            # GMM density modeling
+│   ├── 03b_classical_baselines.ipynb    # Classical anomaly detectors
+│   └── 05_evaluation.ipynb              # Evaluation toolkit and curves
 ├── results/
 │   ├── scores/                  # {model}_{split}.npy  (higher = more anomalous)
-│   ├── figures/                 # PNG plots
-│   ├── tables/                  # CSV metric tables
-│   └── models/                  # serialised models (joblib)
-├── reports/ieee_report/         # LaTeX IEEE report sections
+│   ├── figures/                 # PNG plots (PR curves, ROC, cost, feature importance)
+│   ├── tables/                  # CSV metric tables and paper_numbers.tex
+│   └── models/                  # serialised models (gmm.joblib, gmm.pkl)
+├── reports/
+│   ├── T033_Phase1_IEEE_Report.pdf      # Compiled IEEE conference report (8 pages)
+│   ├── ieee_report/                     # LaTeX IEEE report source and canonical refs.bib
+│   └── literature_review.md             # Standalone literature review deliverable
 ├── docs/
-│   ├── data_card.md             # dataset description and limitations
-│   ├── viva_notes/              # individual viva preparation notes
-│   └── requests/                # change requests for shared files
-├── run_all.py                   # orchestrates Phase 1 stages
+│   ├── T033_Phase1_Presentation_Slides.pdf # Phase 1 presentation deck (10 slides)
+│   ├── data_card.md                     # dataset description and compliance audit
+│   ├── FINAL_AUDIT.md                   # integration and verification audit log
+│   └── slides_phase1_outline.md         # presentation slide outline
+├── guides/
+│   ├── PHASE1_ONLY.md                   # Phase 1 project scope and deliverables
+│   └── VIVA_GUIDE.md                    # comprehensive master viva preparation guide
+├── run_all.py                           # orchestrates Phase 1 stages
 ├── requirements.txt
-├── CONTRIBUTING.md
-└── CONTRIBUTIONS.md
+└── CONTRIBUTIONS.md                     # verified roles, enrollments, and owned files
 ```
+
+## Deliverables & Submission Artifacts
+
+- 📄 **IEEE Conference Paper (PDF):** [`reports/T033_Phase1_IEEE_Report.pdf`](reports/T033_Phase1_IEEE_Report.pdf) (8-page double-column IEEEtran format)
+- 📊 **Presentation Slides Deck (PDF):** [`docs/T033_Phase1_Presentation_Slides.pdf`](docs/T033_Phase1_Presentation_Slides.pdf) (10-slide 16:9 presentation deck)
+- 📝 **LaTeX Source:** [`reports/ieee_report/main_phase1.tex`](reports/ieee_report/main_phase1.tex) with canonical bibliography [`reports/ieee_report/refs.bib`](reports/ieee_report/refs.bib)
+- 📦 **Overleaf Bundle Archive:** `overleaf_T033_phase1.zip` (self-contained package for 1-click Overleaf compilation)
+- 🎓 **Master Viva Defense Guide:** [`guides/VIVA_GUIDE.md`](guides/VIVA_GUIDE.md) (individual member Q&A, theoretical deep dives, code walkthrough)
 
 ## How to Reproduce
 

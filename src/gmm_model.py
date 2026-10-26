@@ -33,6 +33,7 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 import joblib
+import pickle
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -519,7 +520,7 @@ def run_instability_study(splits: Splits, chosen_k: int = 5) -> dict[str, Any]:
     seeds = [42, 43, 44, 45, 46]
     seed_rows = []
     for s in seeds:
-        gmm = GaussianMixture(n_components=chosen_k, covariance_type="diag", reg_covar=1e-4, random_state=s, max_iter=200, n_init=1)
+        gmm = GaussianMixture(n_components=chosen_k, covariance_type="diag", reg_covar=1e-2, random_state=s, max_iter=200, n_init=1)
         gmm.fit(splits.X_train_legit)
         s_val = compute_anomaly_scores(gmm, splits.X_val)
         pr = pr_auc(splits.y_val, s_val)
@@ -540,7 +541,7 @@ def run_instability_study(splits: Splits, chosen_k: int = 5) -> dict[str, Any]:
         X_tr_d = splits.X_train_legit[:, :d]
         X_val_d = splits.X_val[:, :d]
         t0 = time.time()
-        gmm = GaussianMixture(n_components=chosen_k, covariance_type="diag", reg_covar=1e-4, random_state=42, max_iter=200)
+        gmm = GaussianMixture(n_components=chosen_k, covariance_type="diag", reg_covar=1e-2, random_state=42, max_iter=200)
         gmm.fit(X_tr_d)
         fit_time = time.time() - t0
         s_val_d = compute_anomaly_scores(gmm, X_val_d)
@@ -668,10 +669,12 @@ def run_gmm_stage() -> None:
         n_init=3,
     )
 
-    # Serialize fitted model
+    # Serialize fitted model (.joblib standard + .pkl compatibility)
     model_path = models_dir / "gmm.joblib"
     joblib.dump(gmm_final, model_path)
-    _logger.info("Saved fitted GMM model to %s", model_path)
+    with open(models_dir / "gmm.pkl", "wb") as f:
+        pickle.dump(gmm_final, f)
+    _logger.info("Saved fitted GMM model to %s and %s", model_path, models_dir / "gmm.pkl")
 
     # 5. Compute and save anomaly scores
     s_val = compute_anomaly_scores(gmm_final, splits.X_val)

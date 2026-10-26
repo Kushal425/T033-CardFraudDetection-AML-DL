@@ -1,57 +1,43 @@
 \section{Related Work}
 \label{sec:related_work}
 
-Anomaly detection for transactional risk mitigation spans decades of statistical learning research. This section reviews density estimation techniques, classical non-parametric and kernel-based baselines, the ULB benchmark stream, and evaluation metrics under extreme skew.
+Anomaly detection for transactional risk mitigation spans decades of statistical learning research across density estimation, tree partitioning, and subspace projections.
 
-\subsection{Density Estimation and Gaussian Mixture Models}
-Parametric density estimation models normal data distribution directly via probability theory. A Gaussian Mixture Model (GMM) approximates an arbitrary smooth continuous density through a convex sum of $K$ multivariate Gaussian components:
+\subsection{Density Estimation and Gaussian Mixtures}
+Parametric density estimation models normal data distribution directly. A Gaussian Mixture Model (GMM) approximates continuous densities via a convex combination of $K$ multivariate Gaussian components:
 \begin{equation}
-    p(\mathbf{x} \mid \Theta) = \sum_{k=1}^K \pi_k \, \mathcal{N}(\mathbf{x} \mid \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k), \quad \sum_{k=1}^K \pi_k = 1, \; \pi_k \ge 0
+    p(\mathbf{x} \mid \Theta) = \sum_{k=1}^K \pi_k \, \mathcal{N}(\mathbf{x} \mid \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k), \quad \sum_{k=1}^K \pi_k = 1, \; \pi_k \ge 0.
 \end{equation}
-Direct maximum-likelihood optimization is non-convex and analytically intractable. The standard computational framework is the Expectation-Maximization (EM) algorithm formulated by Dempster, Laird, and Rubin \cite{dempster1977maximum}. The EM algorithm alternates between evaluating posterior component responsibilities given current parameter estimates (E-step) and updating component means, covariances, and mixing proportions via analytical stationary points (M-step).
-
-In anomaly triage, the test sample anomaly score is defined as the negative log-likelihood (NLL): $\mathcal{S}(\mathbf{x}^*) = -\ln p(\mathbf{x}^* \mid \hat{\Theta})$. Samples located in low-density tails or sparse regions between modes incur high NLL, signaling anomalous transactions. Model order selection (tuning $K$) is governed by information criteria that penalize log-likelihood by parameter complexity: the Akaike Information Criterion (AIC) \cite{akaike1974new} ($2p - 2\ln \hat{L}$) and the Bayesian Information Criterion (BIC) \cite{schwarz1978estimating} ($p \ln N - 2\ln \hat{L}$), where $p$ is the number of free parameters and $N$ is sample size.
+Parameters are estimated using Expectation-Maximization (EM) \cite{dempster1977maximum}. In anomaly triage, the anomaly score is the negative log-likelihood (NLL): $\mathcal{S}(\mathbf{x}^*) = -\ln p(\mathbf{x}^* \mid \hat{\Theta})$. Model order selection (tuning $K$) balances likelihood against complexity using the Akaike Information Criterion (AIC) \cite{akaike1974new} ($2p - 2\ln \hat{L}$) or Bayesian Information Criterion (BIC) \cite{schwarz1978estimating} ($p \ln N - 2\ln \hat{L}$), where $p$ is parameter count and $N$ is sample size.
 
 \subsection{Classical Anomaly Detection Baselines}
-A robust evaluation of GMM requires comparison against classical anomaly detection paradigms:
+To benchmark GMMs, we evaluate three established unsupervised paradigms:
 \begin{itemize}
-    \item \textbf{Isolation Forest:} Introduced by Liu et al. \cite{liu2008isolation}, Isolation Forest exploits the geometric property that anomalous instances are sparse and structurally different from normal clusters. By recursively partitioning feature space via randomly selected features and uniform split values, anomalies are isolated near the root of tree ensembles ($iTrees$). The anomaly score scales inversely with average tree path length. Isolation Forest requires no parametric distribution assumptions and exhibits linear computational complexity $\mathcal{O}(t \cdot \psi \log \psi)$ in tree size $\psi$ and count $t$.
-    \item \textbf{One-Class Support Vector Machines (OC-SVM):} Proposed by Sch{\"o}lkopf et al. \cite{scholkopf2001estimating}, OC-SVM constructs a maximum-margin hyperplane in a reproducing kernel Hilbert space (RKHS) that encloses the normal data while maximizing the distance from the coordinate origin. The parameter $\nu \in (0, 1]$ bounds the training outlier fraction and support vector proportion. Signed functional distance from the decision boundary serves as an inverse anomaly score.
-    \item \textbf{PCA Reconstruction Error:} Shyu et al. \cite{shyu2003novel} demonstrated that projecting high-dimensional observations onto the dominant $k$-dimensional principal subspace and projecting back reconstructs normal correlations. Anomalous events that break standard correlation patterns incur substantial residual reconstruction error $\mathcal{E}(\mathbf{x}) = \|\mathbf{x} - \hat{\mathbf{x}}\|_2^2$.
+    \item \textbf{Isolation Forest ($iForest$):} Liu et al. \cite{liu2008isolation} isolate anomalies by recursive random axis-aligned partitioning. Because anomalies are sparse and distinct, they are isolated at shallower tree depths. The anomaly score scales inversely with average path length.
+    \item \textbf{One-Class SVM (OC-SVM):} Sch{\"o}lkopf et al. \cite{scholkopf2001estimating} map observations into a reproducing kernel Hilbert space, identifying a max-margin hyperplane separating normal data from the coordinate origin.
+    \item \textbf{PCA Reconstruction Error:} Shyu et al. \cite{shyu2003novel} project observations onto the top-$k$ principal components. Anomalies that disrupt typical correlation structures incur large reconstruction residuals $\mathcal{E}(\mathbf{x}) = \|\mathbf{x} - \hat{\mathbf{x}}\|_2^2$.
+    \item \textbf{Local Outlier Factor (LOF):} Breunig et al. \cite{breunig2000lof} score instances by comparing local density against $k$-nearest neighbors, accommodating multi-density clusters.
 \end{itemize}
 
-\subsection{Credit Card Fraud Datasets and Streaming Benchmarks}
-The foundational credit card benchmark was published by Dal Pozzolo et al. \cite{dalpozzolo2015calibrating} through a collaborative agreement with Worldline and the Machine Learning Group at Universit{\'e} Libre de Bruxelles (ULB). Subsequent works by Dal Pozzolo et al. \cite{dalpozzolo2018credit}, Carcillo et al. \cite{carcillo2018scarff}, and Le Borgne et al. \cite{leborgne2022handbook} highlighted key streaming phenomena: non-stationary transaction rates, severe class imbalance, and verification lag. The dataset consists of 284,807 European cardholder transactions recorded across 48 continuous hours in September 2013, with 492 fraud occurrences (base rate $0.1727\%$). Feature dimensions V1--V28 are PCA projections implemented to preserve privacy, alongside raw transaction Amount and Time.
+\subsection{Evaluation Under Severe Class Imbalance}
+A major limitation in fraud literature is reliance on ROC-AUC. As demonstrated by Saito and Rehmsmeier \cite{saito2015precision} and Davis and Goadrich \cite{davis2006relationship}, ROC curves evaluate True Positive Rate against False Positive Rate ($\text{FPR} = \text{FP}/(\text{FP}+\text{TN})$). When the legitimate class is vast ($N_{\text{legit}} \approx 284\,000$), hundreds of false alarms generate negligible FPR ($<0.5\%$), yielding artificially high ROC-AUC ($>0.95$).
 
-\subsection{Evaluation Under Severe Imbalance}
-A central theme in imbalanced learning literature is the deficiency of ROC-AUC. As proven by Saito and Rehmsmeier \cite{saito2015precision} and Davis and Goadrich \cite{davis2006relationship}, ROC curves evaluate True Positive Rate against False Positive Rate ($\text{FPR} = \text{FP}/(\text{FP}+\text{TN})$). When the negative class is massive ($N_{\text{legit}} = 284,315$), hundreds of false alarms generate a negligible FPR ($<0.5\%$), creating an illusion of high performance ($>0.95$ ROC-AUC).
+In contrast, Precision-Recall curves evaluate Precision ($\text{TP}/(\text{TP}+\text{FP})$) against Recall, making them directly sensitive to false alarms. Under an operational triage queue with fixed investigator bandwidth, Precision@$k$ and Recall@FPR ($\text{FPR} \le 0.5\%$) provide actionable measures of alert quality \cite{dalpozzolo2018credit, leborgne2022handbook}.
 
-In contrast, Precision-Recall curves evaluate Precision ($\text{TP}/(\text{TP}+\text{FP})$) against Recall ($\text{TP}/(\text{TP}+\text{FN})$), making them sensitive to false alarms. The baseline PR-AUC for an uninformative predictor equals the empirical positive prevalence ($\approx 0.0017$). Furthermore, operational financial institutions employ alert triage queues with fixed daily capacities. Thus, Precision@$k$ and Recall@$k$ ($k \in \{50, 100, 200\}$) provide direct measures of alert quality under constrained human verification bandwidth \cite{dalpozzolo2018credit}.
-
-\subsection{Literature Summary and Project Gap}
-Table~\ref{tab:lit_comparison} summarizes key reference works. Many prior studies employ random train-test splitting (inducing temporal data leakage) or tune decision thresholds directly on test data. This project bridges this gap by enforcing strict chronological splitting, isolated preprocessor estimation on legitimate training rows only, validation-selected thresholds, and comprehensive Gaussianity testing of PCA features before density fitting.
-
-\begin{table*}[!t]
+\begin{table}[h]
 \centering
-\caption{Comparison of Foundational and Contemporary Literature in Fraud and Anomaly Detection.}
+\caption{Taxonomy of Fraud and Anomaly Detection Paradigms.}
 \label{tab:lit_comparison}
 \footnotesize
-\begin{tabular}{p{2.6cm}cp{3.0cm}p{2.4cm}p{2.3cm}p{4.2cm}}
+\begin{tabular}{lllp{2.6cm}}
 \hline
-\textbf{Paper / Reference} & \textbf{Year} & \textbf{Methodology} & \textbf{Dataset} & \textbf{Primary Metric} & \textbf{Key Limitation / Identified Gap} \\
+\textbf{Paradigm} & \textbf{Key Works} & \textbf{Core Scoring Mechanism} & \textbf{Identified Gap} \\
 \hline
-Dempster et al. \cite{dempster1977maximum} & 1977 & EM for Gaussian Mixtures & General statistical & Log-likelihood & Prone to local optima and singular covariance matrices. \\
-Akaike \cite{akaike1974new} & 1974 & AIC Model Selection & Time series & AIC score & Asymptotically overestimates component count $K$. \\
-Schwarz \cite{schwarz1978estimating} & 1978 & BIC Model Selection & Asymptotic systems & BIC score & Assumes large sample regime with uniform priors. \\
-Sch{\"o}lkopf et al. \cite{scholkopf2001estimating} & 2001 & One-Class SVM & Synthetic / Benchmark & Support fraction & Quadratic scaling $\mathcal{O}(N^2)$; difficult parameter tuning. \\
-Shyu et al. \cite{shyu2003novel} & 2003 & PCA Reconstruction & Network Intrusion & FAR, Detection Rate & Purely linear subspace; misses non-linear clusters. \\
-Davis \& Goadrich \cite{davis2006relationship} & 2006 & PR vs. ROC Theoretical Map & General ML & PR-AUC, ROC-AUC & Theoretical derivation; lacks operational triage analysis. \\
-Liu et al. \cite{liu2008isolation} & 2008 & Isolation Forest ($iForest$) & Multi-domain anomaly & ROC-AUC, Latency & Axis-parallel cuts struggle with dense overlapping clusters. \\
-Dal Pozzolo et al. \cite{dalpozzolo2015calibrating} & 2015 & Undersampling Calibration & Commercial credit & PR-AUC, Loss & Evaluates supervised trees; no density estimation study. \\
-Saito \& Rehmsmeier \cite{saito2015precision} & 2015 & Informative PR Curves & Biological / Imbalanced & PR Curves & Restricts analysis to binary supervised classifiers. \\
-Carcillo et al. \cite{carcillo2018scarff} & 2018 & SCARFF Streaming ML & Streaming card feed & Alert Precision & High architectural overhead; complex streaming pipeline. \\
-Dal Pozzolo et al. \cite{dalpozzolo2018credit} & 2018 & Credit Fraud Modeling & ULB Card Dataset & PR-AUC, $P@100$ & Random splitting in some baselines; focus on supervised. \\
-Le Borgne et al. \cite{leborgne2022handbook} & 2022 & Reproducible Fraud Handbook & ULB / Synthetic & Card PR-AUC, $P@k$ & Focuses on supervised boosting; limited GMM exploration. \\
+Density Estimation & \cite{dempster1977maximum, akaike1974new, schwarz1978estimating} & Negative log-likelihood $-\ln p(\mathbf{x})$ & Sensitive to leptokurtosis; high dimensionality curse. \\
+Tree Partitioning & \cite{liu2008isolation} & Inverse tree path length & Axis-aligned splits struggle in high dimensions. \\
+Kernel Envelopes & \cite{scholkopf2001estimating} & Margin distance in RKHS & $\mathcal{O}(N^2)$ scaling; sensitive to $\nu$ and $\gamma$. \\
+Linear Subspace & \cite{shyu2003novel} & Reconstruction residual $\|\mathbf{x} - \hat{\mathbf{x}}\|_2^2$ & Restricted to linear correlations. \\
+Local Density & \cite{breunig2000lof} & Local reachability ratio & High query-time latency $\mathcal{O}(N \log N)$. \\
 \hline
 \end{tabular}
-\end{table*}
+\end{table}

@@ -421,7 +421,7 @@ def run_feature_stage() -> None:
     for key, label, builder in candidates:
         splits = builder(train_df, val_df, test_df) if callable(builder) else builder
         t0 = time.time()
-        gmm = GaussianMixture(n_components=3, covariance_type="diag", reg_covar=1e-4, random_state=42, n_init=1, max_iter=200)
+        gmm = GaussianMixture(n_components=3, covariance_type="diag", reg_covar=1e-2, random_state=42, n_init=1, max_iter=200)
         gmm.fit(splits.X_train_legit)
         train_time = time.time() - t0
 

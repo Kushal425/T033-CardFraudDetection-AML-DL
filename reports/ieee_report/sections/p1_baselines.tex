@@ -5,7 +5,6 @@
 % Describes the classical anomaly-detection baselines used as fair
 % comparisons against the GMM density estimator.
 
-\subsection{Classical Anomaly-Detection Baselines}
 \label{sec:baselines}
 
 To provide a rigorous fair comparison against the Gaussian Mixture Model
@@ -16,7 +15,7 @@ hyper-parameter selection on the validation split and for final evaluation
 on the held-out test split.
 
 % ─── Isolation Forest ────────────────────────────────────────────────────
-\subsubsection{Isolation Forest}
+\subsection{Isolation Forest}
 \label{sec:iforest}
 
 The Isolation Forest~\cite{liu2008isolation} exploits the observation that
@@ -39,7 +38,7 @@ We search over \texttt{n\_estimators} $\in \{100, 200, 500\}$,
 maximises validation PR-AUC.  Contamination is \emph{not} used during fitting.
 
 % ─── PCA Reconstruction Error ────────────────────────────────────────────
-\subsubsection{PCA Reconstruction Error}
+\subsection{PCA Reconstruction Error}
 \label{sec:pca_recon}
 
 Given the top-$k$ principal components $\mathbf{U}_k$ of the legitimate
@@ -61,7 +60,7 @@ the $k$ values required for 90\%, 95\% and 99\% explained variance.  The
 value of~$k$ that maximises validation PR-AUC is selected.
 
 % ─── One-Class SVM ───────────────────────────────────────────────────────
-\subsubsection{One-Class SVM (RBF Kernel)}
+\subsection{One-Class SVM (RBF Kernel)}
 \label{sec:ocsvm}
 
 The One-Class SVM~\cite{scholkopf2001estimating} maps data into a
@@ -80,7 +79,7 @@ seeded random sub-sample of 40{,}000 legitimate training rows.  This is a
 standard trade-off between computational cost and model fidelity.
 
 % ─── Local Outlier Factor ────────────────────────────────────────────────
-\subsubsection{Local Outlier Factor}
+\subsection{Local Outlier Factor}
 \label{sec:lof}
 
 LOF~\cite{breunig2000lof} computes a local reachability density for each point
@@ -94,7 +93,7 @@ We use LOF in \emph{novelty} mode, fitting only on legitimate training data
 $k \in \{10, 20, 50\}$ is swept with validation PR-AUC selection.
 
 % ─── Reference Baselines ─────────────────────────────────────────────────
-\subsubsection{Reference Baselines}
+\subsection{Reference Baselines}
 \label{sec:ref_baselines}
 
 Two reference baselines bracket performance:
@@ -105,35 +104,3 @@ Two reference baselines bracket performance:
           amount, testing whether high-value transactions are disproportionately
           fraudulent.
 \end{enumerate}
-
-% ─── Comparison to GMM ───────────────────────────────────────────────────
-\subsubsection{Comparison to GMM}
-\label{sec:compare_gmm}
-
-The GMM (Sec.~\ref{sec:gmm}) is an explicit parametric density model:
-it assumes the legitimate manifold follows a mixture of Gaussians and uses
-the negative log-likelihood as the anomaly score.  This provides a
-probabilistically principled score with well-understood calibration.
-
-In contrast:
-\begin{itemize}
-    \item \textbf{Isolation Forest} is a non-parametric geometric method
-          based on random axis-parallel partitions; it is robust to scaling
-          and feature interactions but cannot estimate densities.
-    \item \textbf{PCA reconstruction error} is a linear method that captures
-          variance in the principal subspace; it fails when anomalies lie
-          \emph{within} the principal subspace but differ in the residual.
-    \item \textbf{OC-SVM} operates in kernel feature space and can model
-          nonlinear boundaries, but is sensitive to kernel hyperparameters
-          and scales poorly ($O(n^2)$--$O(n^3)$).
-    \item \textbf{LOF} captures local density variations, making it effective
-          for clusters of varying density, but is sensitive to the choice
-          of $k$ and degrades in high dimensions.
-\end{itemize}
-
-Each approach has complementary failure modes: GMM struggles with heavy tails
-and high dimensionality; Isolation Forest is weakened by irrelevant features
-(axis-parallel splits); PCA requires anomalies to project into the minor
-subspace; OC-SVM and LOF suffer from the curse of dimensionality.  Comparing
-all approaches reveals which inductive biases are most appropriate for the
-credit-card fraud dataset.
