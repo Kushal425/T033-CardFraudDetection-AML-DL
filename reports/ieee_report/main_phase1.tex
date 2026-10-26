@@ -10,9 +10,10 @@
 \usepackage{booktabs}
 \usepackage{hyperref}
 \usepackage{siunitx}
+\graphicspath{{../../}{./}{results/figures/}{figures/}}
 
 % Paper numbers — auto-generated, do not edit by hand
-\input{../../results/tables/paper_numbers}
+\IfFileExists{paper_numbers.tex}{\input{paper_numbers}}{\input{../../results/tables/paper_numbers}}
 
 \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
     T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
@@ -79,12 +80,18 @@ unsupervised learning, class imbalance, precision-recall
 \input{sections/p1_gmm_results}
 
 %%% ─── 6. Classical Baselines ────────────────────────────────────────────────
+\section{Classical Anomaly Detection Baselines}
+\label{sec:baselines_main}
 \input{sections/p1_baselines}
 
 %%% ─── 7. Evaluation Protocol ────────────────────────────────────────────────
+\section{Evaluation Protocol}
+\label{sec:eval_protocol_main}
 \input{sections/p1_evaluation_protocol}
 
 %%% ─── 8. Results & Comparison ───────────────────────────────────────────────
+\section{Results and Empirical Comparison}
+\label{sec:results_main}
 \input{sections/p1_results_comparison}
 
 %%% ─── 9. Discussion & Limitations ──────────────────────────────────────────

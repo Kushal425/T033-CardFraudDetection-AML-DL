@@ -33,6 +33,7 @@ from pathlib import Path
 from typing import Any
 
 import joblib
+import pickle
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -673,6 +674,8 @@ def run_all_baselines() -> dict:
 
     # Save model and scores
     joblib.dump(pca_model, _MODELS_DIR / "pca.joblib")
+    with open(_MODELS_DIR / "pca.pkl", "wb") as f:
+        pickle.dump(pca_model, f)
     save_scores("pca", "val", s_pca_val)
     save_scores("pca", "test", s_pca_test)
 
@@ -711,6 +714,8 @@ def run_all_baselines() -> dict:
     all_scores_test["iforest"] = s_if_test
 
     joblib.dump(best_if, _MODELS_DIR / "iforest.joblib")
+    with open(_MODELS_DIR / "iforest.pkl", "wb") as f:
+        pickle.dump(best_if, f)
     save_scores("iforest", "val", s_if_val)
     save_scores("iforest", "test", s_if_test)
 
@@ -747,6 +752,8 @@ def run_all_baselines() -> dict:
     all_scores_test["ocsvm"] = s_ocsvm_test
 
     joblib.dump(best_ocsvm, _MODELS_DIR / "ocsvm.joblib")
+    with open(_MODELS_DIR / "ocsvm.pkl", "wb") as f:
+        pickle.dump(best_ocsvm, f)
     save_scores("ocsvm", "val", s_ocsvm_val)
     save_scores("ocsvm", "test", s_ocsvm_test)
 
@@ -782,6 +789,8 @@ def run_all_baselines() -> dict:
     all_scores_test["lof"] = s_lof_test
 
     joblib.dump(best_lof, _MODELS_DIR / "lof.joblib")
+    with open(_MODELS_DIR / "lof.pkl", "wb") as f:
+        pickle.dump(best_lof, f)
     save_scores("lof", "val", s_lof_val)
     save_scores("lof", "test", s_lof_test)
 
@@ -946,6 +955,8 @@ def run_all_baselines() -> dict:
         "lof_results": lof_results,
     }
 
+
+run_baseline_stage = run_all_baselines
 
 if __name__ == "__main__":
     run_all_baselines()

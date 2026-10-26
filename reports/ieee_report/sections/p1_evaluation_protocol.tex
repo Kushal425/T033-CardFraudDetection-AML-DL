@@ -3,150 +3,15 @@
 % Author: Krishna Pramod Dubale (Task 04)
 % ──────────────────────────────────────────────────────────────────────────────
 
-\subsection{Why Accuracy Fails}
-\label{sec:eval:accuracy}
+\subsection{Evaluation Metrics Under Class Imbalance}
+\label{sec:eval:metrics}
 
-The credit-card fraud dataset has a base rate of approximately 0.172\,\%: out of
-every 10,000 transactions only about 17 are fraudulent.  A trivial classifier
-that labels every transaction as \emph{legitimate} achieves an accuracy of
-$1 - 0.00172 = 99.83\,\%$.  This number is misleading because it hides the
-fact that every single fraud was missed.  Accuracy treats true negatives (correct
-``not fraud'' predictions) and true positives (correctly detected frauds) as
-equally valuable, but in fraud detection the cost of missing a fraud far
-outweighs the cost of a false alarm.
-
-Formally, accuracy is defined as
-\begin{equation}
-    \mathrm{Accuracy} = \frac{TP + TN}{TP + TN + FP + FN}.
-\end{equation}
-When $TN \gg TP$ (as in our dataset), accuracy is dominated by the true-negative
-count and becomes insensitive to the model's ability to detect fraud.  We
-therefore \textbf{never report accuracy} as a headline metric.
-
-
-\subsection{PR-AUC vs ROC-AUC Under Class Imbalance}
-\label{sec:eval:pr_vs_roc}
-
-\paragraph{ROC-AUC.}
-The Receiver Operating Characteristic curve plots the true positive rate (TPR,
-i.e.\ recall) against the false positive rate (FPR) as the decision threshold
-varies.  ROC-AUC equals the probability that a randomly chosen fraud transaction
-is scored higher than a randomly chosen legitimate one.  While useful, ROC-AUC
-can be misleadingly high under severe imbalance: because the number of legitimate
-transactions is so large ($\sim$57,000), even a high absolute number of false
-positives translates to a small FPR, inflating the ROC-AUC.
-
-\paragraph{PR-AUC (Average Precision).}
-The Precision-Recall curve plots precision (the fraction of flagged transactions
-that are truly fraud) against recall (the fraction of all frauds that are
-flagged).  Average Precision (AP) is the area under this curve, defined as
-\begin{equation}
-    \mathrm{AP} = \sum_{k} (R_k - R_{k-1}) \, P_k,
-\end{equation}
-where $P_k$ and $R_k$ are the precision and recall at the $k$-th threshold.
-A random ranker achieves AP $\approx$ base rate ($\approx 0.0017$), while a
-perfect ranker achieves AP $= 1.0$.  PR-AUC is not inflated by true negatives
-and is our \textbf{primary headline metric}.
-
-
-\subsection{Recall at Fixed False-Positive Rate}
-\label{sec:eval:recall_at_fpr}
-
-Operational fraud-detection teams often impose an FPR budget: ``we can tolerate
-at most $x$\,\% of legitimate transactions being flagged.''  We measure
-\emph{recall@FPR}: the highest recall achievable while keeping FPR $\leq x$.
-
-To compute this, we derive a threshold from the validation set by taking the
-$(1 - x)$-quantile of the \emph{legitimate} validation scores.  For instance,
-at FPR $\leq 0.5\,\%$, we use the 99.5th percentile of legitimate val scores as
-the threshold.  This threshold is then \textbf{frozen} and applied to the test
-set.
-
-From the ROC curve: recall@FPR is $\max\{TPR : FPR_{\text{curve}} \leq x\}$.
-
-
-\subsection{Precision at Review Capacity}
-\label{sec:eval:precision_at_cap}
-
-An alternative operational view: the investigation team can review at most
-$K$~transactions per day (or the top $f$\,\% of the transaction stream).
-\emph{Precision@K} is the fraction of the top-$K$ scored transactions that
-are genuinely fraudulent.  This tells us how efficiently we are using limited
-human review resources.
-
-\begin{equation}
-    \mathrm{Precision@K} = \frac{\text{number of frauds in top-}K}{K}.
-\end{equation}
-
-
-\subsection{Bootstrap Confidence Interval Procedure}
-\label{sec:eval:bootstrap}
-
-To quantify uncertainty, we use the \textbf{stratified bootstrap}:
-
-\begin{enumerate}
-    \item Fix the test set labels $\mathbf{y}$ and scores $\mathbf{s}$.
-    \item Separate indices into fraud set $\mathcal{F}$ and legitimate set
-          $\mathcal{L}$.
-    \item For $b = 1, \dots, B$ (we use $B = 2000$):
-        \begin{enumerate}
-            \item Resample $|\mathcal{F}|$ indices from $\mathcal{F}$ with
-                  replacement.
-            \item Resample $|\mathcal{L}|$ indices from $\mathcal{L}$ with
-                  replacement.
-            \item Combine and compute the metric on the resampled data:
-                  $\theta^{(b)} = m(\mathbf{y}[\text{idx}],
-                  \mathbf{s}[\text{idx}])$.
-        \end{enumerate}
-    \item The 95\,\% CI is $[\theta^{(0.025)}, \theta^{(0.975)}]$, i.e.\ the
-          2.5th and 97.5th percentiles of the bootstrap distribution.
-\end{enumerate}
-
-\paragraph{Assumptions.}
-The percentile bootstrap assumes that the sampling distribution of the
-metric is approximately symmetric and has moderate tails.  It does not require
-normality but may be inaccurate for very small samples.
-
-\paragraph{Stratification.}
-We resample fraud and legitimate indices separately to preserve the class ratio
-in each replicate.  Without stratification, some bootstrap replicates would
-contain zero frauds, making metrics like PR-AUC undefined.
-
-
-\subsection{Why Thresholds are Set on the Validation Set}
-\label{sec:eval:val_thresholds}
-
-If thresholds were tuned on the test set, the reported performance would be
-optimistically biased: the model would appear to perform better than it would
-on truly unseen data.  This is a form of \emph{data leakage}.
-
-Our protocol:
-\begin{enumerate}
-    \item Derive all thresholds (FPR quantile, max-F1, review capacity) from the
-          \textbf{validation} split only.
-    \item \textbf{Freeze} these thresholds.
-    \item Apply the frozen thresholds to the \textbf{test} split for reporting.
-\end{enumerate}
-Test labels are used \emph{only} for computing final evaluation metrics, never
-for model or threshold selection.
-
-
-\subsection{Limitations}
-\label{sec:eval:limitations}
-
+With a fraud base rate of $0.17\%$, trivial majority prediction achieves $99.83\%$ accuracy while failing all fraud detections. We strictly report imbalanced metrics:
 \begin{itemize}
-    \item \textbf{Few fraud cases.}  The test set contains only 75 fraud
-          transactions out of $\sim$57,000.  Bootstrap CIs for fraud-sensitive
-          metrics (PR-AUC, recall) are therefore wide, reflecting genuine
-          statistical uncertainty.
-    \item \textbf{Assumed costs.}  The cost curve analysis assumes a cost ratio
-          $r$ (missed fraud / false alarm) that is an operational assumption, not
-          a measured quantity.  Different business contexts would use different
-          values of $r$.
-    \item \textbf{No concept drift modelling.}  The dataset covers only 48
-          hours; longer time horizons may exhibit distributional shift that our
-          temporal stability check cannot capture.
-    \item \textbf{Calibration unreliability.}  Platt scaling and isotonic
-          regression are fitted on the validation set ($\sim$57 frauds),
-          which may be insufficient for reliable probability calibration.
+    \item \textbf{PR-AUC (Average Precision):} The primary headline metric, computing the area under the precision-recall curve $\mathrm{AP} = \sum_k (R_k - R_{k-1}) P_k$. Unlike ROC-AUC, PR-AUC is invariant to true negative inflation and directly penalizes false alarms.
+    \item \textbf{Recall at Fixed FPR:} In banking operations with constrained false-alarm budgets, we report $\text{Recall@FPR} \le x$ ($x \in \{0.1\%, 0.5\%, 1.0\%\}$). Thresholds are derived from the $(1-x)$-quantile of legitimate validation scores, frozen, and evaluated forward on test.
+    \item \textbf{Precision at Capacity:} Measuring investigator efficiency under fixed queue limits: $\text{Precision@}K = \text{Frauds in Top-}K / K$ for $K \in \{50, 100, 200\}$.
 \end{itemize}
+
+\subsection{Stratified Bootstrap Confidence Intervals}
+To quantify sampling uncertainty over the small number of test fraud events (\NFraudTest{}), we compute 95\% confidence intervals via stratified bootstrap with $B = 2\,000$ resamples. Resampling legitimate and fraud instances separately preserves empirical prevalence across replicates. CIs are determined via the 2.5th and 97.5th percentiles of the bootstrap metric distribution. Thresholds calibrated on validation data are applied out-of-sample to ensure zero test-set leakage.

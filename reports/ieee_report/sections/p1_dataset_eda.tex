@@ -1,14 +1,12 @@
 \section{Dataset Quality and Exploratory Data Analysis}
 \label{sec:dataset_eda}
 
-This section provides an empirical analysis of the credit card fraud benchmark, covering data integrity, class distributions, temporal dynamics, feature representations, and the statistical validity of the Gaussianity assumption for GMM modeling.
+This section details data integrity, class distributions, temporal dynamics, feature representations, and the empirical validity of normality assumptions on the benchmark European credit card stream \cite{dalpozzolo2018credit}.
 
-\subsection{Dataset Integrity and Quality Audit}
-The raw dataset comprises $284,807$ transaction records and $31$ numeric columns, occupying $67.36\,\text{MB}$ in memory. Every feature is continuous (float64), except for the target binary indicator $\text{Class} \in \{0, 1\}$. 
-\begin{itemize}
-    \item \textbf{Missing Values:} A systematic sweep confirmed exactly zero missing, null, or undefined values across all $8,829,017$ data cells.
-    \item \textbf{Duplicate Analysis:} We identified $1,081$ exact duplicate records ($0.3796\%$ of all transactions), accounting for $1,854$ duplicate rows ($1,822$ legitimate, $32$ fraudulent). Exactly one duplicate group straddled class labels (identical feature values recorded with opposing class assignments), indicating potential record collations or identical micro-authorizations. Following the project configuration protocol, duplicates are retained to reflect raw telemetry conditions.
-\end{itemize}
+\subsection{Dataset Integrity and Chronological Partitioning}
+The dataset comprises $284,807$ continuous transactions ($31$ numeric columns, $67.4\,\text{MB}$) spanning $48.0$ continuous hours in September 2013. A systematic sweep confirmed zero missing or null entries. We identified $1,081$ duplicate transactions ($0.38\%$), which are retained in the stream to reflect true production telemetry.
+
+To prevent temporal data leakage, the stream is partitioned chronologically into 60\% training, 20\% validation, and 20\% test sets, as detailed in Table~\ref{tab:splits}. Notice that the fraud prevalence fluctuates naturally across time windows ($0.21\%$ in train, $0.10\%$ in validation, $0.13\%$ in test). Randomized $k$-fold cross-validation would artificially shuffle these non-stationary regimes, causing temporal snooping.
 
 \begin{table}[h]
 \centering
@@ -28,60 +26,20 @@ Test ($[145\,248, 172\,792\,\text{s}]$) & $56,962$ & $56,887$ & $75$ & $0.1317\%
 \end{tabular}
 \end{table}
 
-\subsection{Class Imbalance and Chronological Partitioning}
-Across the complete dataset, only $492$ transactions are fraudulent, establishing an overall positive prevalence of $0.1727\%$ (1 fraud per 578 legitimate transactions). To prevent temporal data snooping, the dataset is split chronologically into 60\% training, 20\% validation, and 20\% test sets, as detailed in Table~\ref{tab:splits}. 
-
-Notice that the empirical fraud rate fluctuates significantly across chronological periods: $0.2107\%$ in training, dropping to $0.1001\%$ in validation, and settling at $0.1317\%$ in test. This natural temporal fluctuation underscores the hazard of random k-fold cross-validation, which would blend these non-stationary regimes and mask temporal generalization challenges.
-
-\subsection{Amount and Time Feature Dynamics}
-The two non-anonymized features display distinctive empirical properties:
+\subsection{Amount, Time, and Latent Dynamics}
 \begin{itemize}
-    \item \textbf{Transaction Amount:} Legitimate transactions have a mean of $\$88.29$ (median $\$22.00$, standard deviation $\$250.11$, maximum $\$25,691.16$). In contrast, fraudulent transactions exhibit a higher mean of $\$122.21$ but a lower median of $\$9.25$ (maximum $\$2,125.87$). Frauds cluster either in small card-testing authorizations (micro-charges) or elevated cash-out values. Exactly $1,825$ transactions ($0.6408\%$) have an recorded value of $\$0.00$ (pre-authorization card pings). The distribution is extremely heavy-tailed; applying an Interquartile Range (IQR) filter ($Q3 + 1.5 \times \text{IQR}$) on legitimate spending marks $31,862$ transactions ($11.2\%$) as statistical outliers ($>\$184.15$). Consequently, $\ln(1 + \text{Amount})$ log-transformation is vital for stabilizing variance.
-    \item \textbf{Temporal Span:} The `Time` feature spans $172,792$ seconds, corresponding to $48.0$ continuous hours (2 calendar days). Aggregating transactions into 1-hour bins reveals clear circadian rhythms: transaction frequency drops between hours 2--6 AM local time and peaks during late afternoon hours. Fraudulent transactions, however, maintain relatively uniform velocity throughout the night, exploiting off-peak periods when manual authorization desks have reduced staffing.
+    \item \textbf{Transaction Amount:} Legitimate transactions average $\$88.29$ (median $\$22.00$, max $\$25,691$), while frauds average $\$122.21$ (median $\$9.25$, max $\$2,126$). Spending is severely right-skewed ($11.2\%$ IQR outliers in legitimate spending), requiring $\ln(1 + \text{Amount})$ transformation to stabilize variance.
+    \item \textbf{Circadian Rhythms:} Aggregating elapsed `Time` into 1-hour bins demonstrates diurnal spending curves with activity dropping between 2--6 AM local time. Fraudulent activity remains comparatively steady overnight, exploiting off-peak staffing.
+    \item \textbf{Discriminative Latent Features:} Two-sample Kolmogorov-Smirnov (KS) tests reveal strong separation along specific PCA dimensions: V14 ($\text{KS} = 0.8535$), V10 ($0.8320$), V12 ($0.7996$), V17 ($0.7870$), and V11 ($0.7854$). Off-diagonal correlations across legitimate training samples satisfy $|r| < 0.15$, confirming empirical orthogonality.
 \end{itemize}
 
-\subsection{Feature Discriminative Power and PCA Orthogonality}
-Features V1--V28 represent principal components obtained from card transaction metadata. To identify which latent dimensions carry fraud signals, we computed the two-sample Kolmogorov-Smirnov (KS) statistic and Cohen's $d$ effect size between legitimate and fraudulent samples:
+\subsection{Gaussianity Audit and Modeling Implications}
+Parametric GMMs assume clusters conform to multivariate normality. We tested this assumption on legitimate training transactions across all 28 PCA dimensions:
 \begin{itemize}
-    \item \textbf{Top Discriminating Features:} V14 ($\text{KS} = 0.8535, d = 2.318$), V10 ($\text{KS} = 0.8320, d = 1.742$), V12 ($\text{KS} = 0.7996, d = 2.029$), V17 ($\text{KS} = 0.7870, d = 1.587$), and V11 ($\text{KS} = 0.7854, d = 1.998$). For instance, legitimate transactions have a mean V14 value of $+0.098$, whereas fraudulent transactions average $-7.277$, providing strong linear and non-linear separability.
-    \item \textbf{PCA Orthogonality:} Correlation analysis across legitimate training observations confirms that off-diagonal pairwise correlations are near zero (maximum $|r| = 0.1451$). Because V1--V28 originate from principal component analysis, near-zero linear correlation is mathematically expected, justifying diagonal covariance structures ($\boldsymbol{\Sigma} = \text{diag}(\sigma_1^2, \dots, \sigma_D^2)$) in initial GMM approximations.
+    \item \textbf{Normality Rejection:} Shapiro-Wilk tests rejected normality for all 28 features ($p < 0.05$).
+    \item \textbf{Extreme Leptokurtosis:} While dimensions such as V11 and V13 exhibit near-Gaussian kurtosis ($\approx 0.15$), severe excess kurtosis dominates features like V2 ($\text{kurt} = 115.0$), V7 ($77.0$), and V8 ($261.7$). Only 9 of 28 features exhibit $|\text{kurt}| < 3.0$.
 \end{itemize}
+This empirical fat-tailed structure implies that single-component Gaussians ($K=1$) severely underestimate tail probability mass, establishing the theoretical need for multi-component mixtures ($K \ge 3$) or non-parametric baselines.
 
-\subsection{Gaussianity Audit and GMM Assumptions}
-A central prerequisite for Gaussian Mixture Models is that within-cluster distributions conform to multivariate normal densities. We conducted an audit on legitimate training instances ($N = 170,524$) across all 28 PCA dimensions:
-\begin{itemize}
-    \item \textbf{Normality Rejection:} The Shapiro-Wilk test (evaluated on a standard subsample of $5,000$ points) rejected the null hypothesis of univariate normality for all $28$ features ($p < 0.05$).
-    \item \textbf{Heavy Tails and Kurtosis:} While dimensions such as V11 ($\text{skew} = 0.13, \text{kurt} = 0.14$) and V13 ($\text{skew} = 0.14, \text{kurt} = 0.15$) exhibit near-Gaussian moments, extreme leptokurtosis dominates other features: V2 ($\text{kurt} = 114.97$), V7 ($\text{kurt} = 77.01$), and V8 ($\text{kurt} = 261.68$).
-    \item \textbf{Implications for Modeling:} Only $9$ out of $28$ features meet mild plausibility criteria ($|\text{skew}| < 1$ and $|\text{excess kurtosis}| < 3$). Single-component Gaussians ($K=1$) cannot accommodate these long, heavy-tailed margins without severely underestimating tail density. This finding motivates multi-component GMMs ($K \ge 3$) capable of assigning separate components to heavy-tail clusters, or non-parametric isolation baselines.
-\end{itemize}
-
-\begin{table}[h]
-\centering
-\caption{Systematic Data Leakage Audit.}
-\label{tab:leakage}
-\footnotesize
-\begin{tabular}{p{5.0cm}cp{2.5cm}}
-\hline
-\textbf{Leakage Prevention Rule} & \textbf{Status} & \textbf{Audit Evidence} \\
-\hline
-Chronological split without overlap & \textbf{PASS} & $t_{\text{train}}^{\max} \le t_{\text{val}}^{\min} < t_{\text{val}}^{\max} \le t_{\text{test}}^{\min}$ \\
-Preprocessor fit on train-legit only & \textbf{PASS} & Scaler fit on $X_{\text{train}}[\text{Class}=0]$ \\
-Fraud labels isolated from fitting & \textbf{PASS} & Unsupervised fitting only \\
-Validation-only threshold selection & \textbf{PASS} & Cutoffs chosen on val \\
-Transparent duplicate handling & \textbf{PASS} & Counted and logged \\
-Zero transformed-feature leak in EDA & \textbf{PASS} & Statistics on raw data \\
-\hline
-\end{tabular}
-\end{table}
-
-\subsection{Leakage Prevention Audit}
-As summarized in Table~\ref{tab:leakage}, the experimental pipeline satisfies all six data hygiene criteria, ensuring that neither future temporal information nor fraud label knowledge informs model fitting or preprocessor scaling.
-
-\subsection{Dataset Limitations}
-We explicitly record four methodological limitations of this benchmark:
-\begin{enumerate}
-    \item \textbf{Anonymized PCA Projections:} The loss of true semantic labels for V1--V28 precludes root-cause business interpretation (e.g., specific merchant types or geolocation anomalies).
-    \item \textbf{Limited Temporal Horizon:} A two-day observation window cannot reflect weekly payroll variations, monthly bill cycles, or prolonged fraud campaign dynamics.
-    \item \textbf{Geographic Restriction:} Restricted to European transactions under specific banking protocols from 2013, limiting transferability to contemporary e-commerce payment rails without adaptation.
-    \item \textbf{Static Imbalance Ratio:} Base rates vary substantially in production ecosystems, necessitating adaptive threshold recalibration in live deployments.
-\end{enumerate}
+\subsection{Zero-Leakage Protocol Guarantee}
+All preprocessing transformers (standardization, power scaling) are fit **strictly on legitimate training records** ($X_{\text{train}}[\text{Class}=0]$) and frozen for validation/test evaluation. Fraud labels are completely isolated during model estimation, and all triage thresholds are calibrated strictly on validation data.

@@ -1236,3 +1236,37 @@ def run_full_evaluation(
 
     plt.close("all")
     return results
+
+
+def run_eval_stage() -> dict:
+    """Entry point for run_all.py to execute the full evaluation stage."""
+    from src.data import get_features
+    from src.utils import load_scores
+    from src.config import get_repo_root, CFG
+
+    splits = get_features("base")
+    models = ["pca", "lof", "gmm", "ocsvm", "iforest", "random", "amount"]
+    model_scores: dict[str, dict[str, np.ndarray]] = {}
+    for m in models:
+        try:
+            s_val = load_scores(m, "val")
+            s_test = load_scores(m, "test")
+            model_scores[m] = {"val": s_val, "test": s_test}
+        except Exception:
+            pass
+
+    time_test = None
+    try:
+        test_path = get_repo_root() / CFG["paths"]["processed"] / "test.csv"
+        if test_path.exists():
+            time_test = pd.read_csv(test_path, usecols=["Time"])["Time"].values
+    except Exception:
+        pass
+
+    return run_full_evaluation(
+        model_scores=model_scores,
+        y_val=splits.y_val,
+        y_test=splits.y_test,
+        time_test=time_test,
+    )
+
