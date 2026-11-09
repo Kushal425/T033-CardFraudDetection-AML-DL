@@ -102,10 +102,10 @@ The central research question is:
 
 | Prompt | Member | Responsibility |
 |---|---|---|
-| P2_01 | Prachee | Deep Learning literature and pipeline design |
+| P2_01 | Krishna | Deep Learning literature and pipeline design |
 | P2_02 | Apoorva | Latent-space GMM theory and design |
 | P2_03 | Vani | Deep Autoencoder implementation |
-| P2_04 | Krishna | Hybrid model and ablation study |
+| P2_04 | Prachee | Hybrid model and ablation study |
 | P2_05 | Kushal | Final integration and report |
 
 ## 3. Execution order
