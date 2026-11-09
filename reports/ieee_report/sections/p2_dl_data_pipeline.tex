@@ -1,0 +1,75 @@
+% Section: Deep Learning Data Pipeline & Regularization
+% Author: Krishna Pramod Dubale (Task P2_01)
+% IEEE Conference Paper Section - Card Fraud Triage (Phase 2)
+
+\section{Deep Learning Data Pipeline \& Invariant Auditing}
+\label{sec:p2_dl_data_pipeline}
+
+The integrity of deep learning evaluation under extreme class imbalance depends strictly on preventing data leakage and controlling coordinate scale distortions. This section details the PyTorch data pipeline, anti-contamination invariants, and the mathematical necessity of pre-training standardization.
+
+\subsection{Chronological Partitioning Protocol}
+Let the complete transaction stream be ordered temporally by timestamp $t$: $\mathcal{D} = \{(\mathbf{x}_i, y_i, t_i)\}_{i=1}^N$, where $N = 284,807$ and $t_1 \le t_2 \le \dots \le t_N$ spanning $172,792$ seconds ($\approx 48$ hours). We partition $\mathcal{D}$ chronologically into non-overlapping subsets:
+\begin{align}
+    \mathcal{D}_{\text{train}} &= \{(\mathbf{x}_i, y_i, t_i) \mid 1 \le i \le N_{\text{train}}\}, \quad N_{\text{train}} = 170,884 \ (60\%), \\
+    \mathcal{D}_{\text{val}}   &= \{(\mathbf{x}_i, y_i, t_i) \mid N_{\text{train}} < i \le N_{\text{train}} + N_{\text{val}}\}, \quad N_{\text{val}} = 56,961 \ (20\%), \\
+    \mathcal{D}_{\text{test}}  &= \{(\mathbf{x}_i, y_i, t_i) \mid N_{\text{train}} + N_{\text{val}} < i \le N\}, \quad N_{\text{test}} = 56,962 \ (20\%).
+\end{align}
+Temporal boundaries satisfy $t_{\text{train}}^{\max} = 120,396\,\text{s} \le t_{\text{val}}^{\min} = 120,396\,\text{s}$ and $t_{\text{val}}^{\max} = 145,247\,\text{s} < t_{\text{test}}^{\min} = 145,248\,\text{s}$. This guarantees that no transaction from the validation or test windows is observable during training.
+
+\subsection{Formal Anti-Leakage Invariants}
+To maintain rigorous scientific validity, our pipeline enforces five structural invariants:
+
+\begin{enumerate}
+    \item \textbf{Legitimate-Only Training Isolation:} In retail banking, fraud labels suffer from a multi-week reporting lag. Autoencoder training must operate strictly in the absence of fraud labels. We isolate the legitimate training subset:
+    \begin{equation}
+        \mathcal{T}_{\text{train}} = \{\mathbf{x}_i \mid (\mathbf{x}_i, y_i) \in \mathcal{D}_{\text{train}} \land y_i = 0\}, \quad |\mathcal{T}_{\text{train}}| = 170,524.
+    \end{equation}
+    All $360$ training fraud transactions are strictly excluded from the training tensor $\mathbf{X}_{\text{train,legit}} \in \mathbb{R}^{170,524 \times 31}$.
+    
+    \item \textbf{Frozen Legitimate Normalization:} Feature standardization parameters (mean $\boldsymbol{\mu}$ and standard deviation $\boldsymbol{\sigma}$) are estimated exclusively on $\mathcal{T}_{\text{train}}$:
+    \begin{equation}
+        \mu_j = \frac{1}{|\mathcal{T}_{\text{train}}|} \sum_{\mathbf{x} \in \mathcal{T}_{\text{train}}} x_j, \quad \sigma_j = \sqrt{\frac{1}{|\mathcal{T}_{\text{train}}|} \sum_{\mathbf{x} \in \mathcal{T}_{\text{train}}} (x_j - \mu_j)^2}.
+    \end{equation}
+    Validation and test vectors are transformed using frozen $(\boldsymbol{\mu}, \boldsymbol{\sigma})$, ensuring zero informational leakage from future transactions into normalization statistics.
+    
+    \item \textbf{Early-Stopping Hygiene:} Standard implementations monitor validation loss across all validation samples, allowing fraud transactions to influence model convergence. We construct a dedicated validation-legitimate tensor:
+    \begin{equation}
+        \mathbf{X}_{\text{val,legit}} = \{\mathbf{x}_i \mid (\mathbf{x}_i, y_i) \in \mathcal{D}_{\text{val}} \land y_i = 0\}, \quad |\mathbf{X}_{\text{val,legit}}| = 56,904,
+    \end{equation}
+    excluding all $57$ validation fraud cases. Early stopping monitors $\mathcal{L}_{\text{val-legit}}$ with patience $P=10$, guaranteeing that model selection is strictly unsupervised.
+    
+    \item \textbf{Rejection of Synthetic Oversampling (SMOTE):} Generating synthetic fraudulent transactions via interpolation $\tilde{\mathbf{x}} = \mathbf{x}_i + \lambda (\mathbf{x}_{k} - \mathbf{x}_i)$ is mathematically incompatible with unsupervised anomaly detection: it assumes that rare fraud events form a convex cluster, which is empirically refuted by adversarial dynamics. We train exclusively on empirical normal transactions.
+    
+    \item \textbf{Deterministic Batching and Streaming:} We construct PyTorch \texttt{DataLoader} instances with batch size $B=512$, deterministic worker seeding, and non-overlapping shuffling restricted strictly within training epochs. Streaming throughput exceeds $575,000$ samples/sec with a compact memory footprint of $20.17\,\text{MB}$ RAM for training tensors.
+\end{enumerate}
+
+\begin{table}[t]
+\caption{Phase 2 Deep Learning Pipeline Anti-Leakage Audit}
+\label{tab:p2_leakage_audit}
+\centering
+\footnotesize
+\begin{tabular}{lccc}
+\toprule
+\textbf{Audit Check} & \textbf{Observed Metric} & \textbf{Requirement} & \textbf{Status} \\
+\midrule
+Train Fraud Infiltration & $0$ frauds in $170,524$ rows & Exactly $0$ & \textbf{PASS} \\
+Scaler Mean Difference & $|\mu_{\text{scaler}} - \mu_{\text{calc}}| < 10^{-15}$ & $< 10^{-6}$ & \textbf{PASS} \\
+Temporal Boundaries & $120,396\,\text{s} \le 145,248\,\text{s}$ & Non-overlapping & \textbf{PASS} \\
+Val-Legit Early Stop & $56,904$ rows ($57$ excluded) & Exclude all fraud & \textbf{PASS} \\
+SMOTE Contamination & $0$ synthetic rows & Exactly $0$ & \textbf{PASS} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Coordinate Variance Dominance in Reconstruction MSE}
+The objective function of an autoencoder under Mean Squared Error is defined as:
+\begin{equation}
+    \mathcal{L}(\mathbf{x}, \hat{\mathbf{x}}) = \frac{1}{d} \sum_{j=1}^d (x_j - \hat{x}_j)^2.
+\end{equation}
+Consider an unnormalized input space where coordinate variances differ widely. The expected contribution of coordinate $j$ to the total squared error is proportional to its marginal variance: $\mathbb{E}[(X_j - \hat{X}_j)^2] \propto \operatorname{Var}(X_j)$. In the unscaled credit card data, raw transaction \texttt{Amount} has an empirical variance of $\operatorname{Var}(\text{Amount}) \approx 62,500\,\text{EUR}^2$, whereas individual PCA features $V_1 \dots V_{28}$ have variances bounded in $[0.1, 3.5]$. 
+
+Under unscaled optimization, coordinate errors in \texttt{Amount} contribute $>99.9\%$ of the gradient magnitude $\nabla_{\boldsymbol{\theta}} \mathcal{L}$, forcing backpropagation to minimize \texttt{Amount} reconstruction while completely ignoring the remaining 28 latent features. By applying train-legitimate standard scaling, we enforce:
+\begin{equation}
+    \operatorname{Var}(Z_j^{\text{train,legit}}) = 1.0000 \pm 0.0002 \quad \forall j \in \{1, \dots, 31\}.
+\end{equation}
+Consequently, each coordinate receives an equal theoretical weight of $1/d \approx 3.23\%$ in expected reconstruction loss, restoring isotropic gradient descent across the entire feature manifold.

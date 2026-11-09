@@ -1,0 +1,46 @@
+% Section: Deep Learning Literature Review
+% Author: Krishna Pramod Dubale (Task P2_01)
+% IEEE Conference Paper Section - Card Fraud Triage (Phase 2)
+
+\section{Deep Learning Literature Review \& Theoretical Gap}
+\label{sec:p2_dl_literature}
+
+\subsection{Autoencoders and Manifold Learning}
+Dimensionality reduction using neural networks originates from the foundational work of Hinton and Salakhutdinov \cite{hinton2006reducing}, who demonstrated that deep multilayer autoencoders discover compact non-linear coordinate systems capable of reconstructing complex manifolds with significantly lower error than classical PCA. An autoencoder parameterizes an encoder $f_{\boldsymbol{\theta}}: \mathbb{R}^d \to \mathbb{R}^k$ and decoder $g_{\boldsymbol{\phi}}: \mathbb{R}^k \to \mathbb{R}^d$ with bottleneck dimension $k \ll d$. When all hidden activations are linear and optimized under Mean Squared Error (MSE), the learned latent subspace is identical to the principal subspace discovered by PCA \cite{bourlard1988auto, baldi1989neural}. Introducing non-linear activation functions (ReLU, Tanh) allows the autoencoder to model continuous curved sub-manifolds embedded within the ambient transaction space $\mathbb{R}^d$.
+
+To prevent autoencoders from learning trivial identity mappings, Vincent et al. \cite{vincent2008extracting} introduced the \emph{Denoising Autoencoder} (DAE), which corrupts clean inputs with stochastic noise $\tilde{\mathbf{x}} \sim q(\tilde{\mathbf{x}} \mid \mathbf{x})$ while requiring the network to reconstruct the original unperturbed input $\mathbf{x}$. Vincent \cite{vincent2011connection} formally proved that training a DAE with Gaussian noise is asymptotically equivalent to non-parametric Hyv{\"a}rinen score matching:
+\begin{equation}
+    g_{\boldsymbol{\phi}}(f_{\boldsymbol{\theta}}(\mathbf{x})) - \mathbf{x} \propto \sigma^2 \nabla_{\mathbf{x}} \log p(\mathbf{x}) \quad \text{as } \sigma^2 \to 0.
+\end{equation}
+This reveals that the reconstruction vector field of a trained DAE points along the steepest ascent direction toward the high-density normal data manifold, providing a principled foundation for anomaly scoring.
+
+\subsection{Reconstruction-Based Anomaly Detection and Pathologies}
+Sakurada and Yairi \cite{sakurada2014anomaly} pioneered the systematic use of undercomplete autoencoders for unsupervised anomaly detection in telemetry streams, establishing that networks trained exclusively on nominal data yield elevated reconstruction error when presented with anomalous patterns:
+\begin{equation}
+    s_{\text{AE}}(\mathbf{x}) = \frac{1}{d} \|\mathbf{x} - g_{\boldsymbol{\phi}}(f_{\boldsymbol{\theta}}(\mathbf{x}))\|_2^2 = \frac{1}{d} \sum_{j=1}^d (x_j - \hat{x}_j)^2.
+\end{equation}
+An and Cho \cite{an2015variational} extended this paradigm to Variational Autoencoders (VAEs), demonstrating that reconstruction probability accounts for decoder output variance.
+
+However, deep autoencoders suffer from two well-documented pathologies:
+\begin{enumerate}
+    \item \textbf{Over-Generalization:} Gong et al. \cite{gong2019memorizing} demonstrated that because deep networks are universal function approximators, an undercomplete network with excessive bottleneck capacity ($k \ge 16$ for $d=30$) can generalize to reconstruct abnormal transactions accurately, degrading triage contrast.
+    \item \textbf{Coordinate Scale Dominance:} The unweighted Euclidean norm in MSE treats all coordinates symmetrically. As proved in Section~\ref{sec:p2_dl_data_pipeline}, unnormalized features with high variance dominate the gradient trajectory, effectively blinding the network to subtle anomalies in lower-scale features.
+\end{enumerate}
+
+\subsection{Deep Density Estimation and Hybrid Frameworks}
+To resolve the limitations of pure distance-based scoring, Zong et al. \cite{zong2018deep} proposed the Deep Autoencoding Gaussian Mixture Model (DAGMM), which jointly optimizes an autoencoder alongside an estimation network that predicts mixture membership probabilities. While DAGMM provides an elegant end-to-end objective, full joint optimization frequently suffers from numerical singularities during Expectation-Maximization and mode collapse in highly imbalanced transaction streams. In Team T033, we address this challenge through a modular, decoupled hybrid strategy: training the autoencoder representation independently, followed by latent-space density estimation ($H_1$) and score fusion ($H_2, H_3$).
+
+\subsection{Optimization, Regularization, and Concept Drift}
+Stable convergence in one-class deep learning requires disciplined inductive biases. We adopt the Adam optimizer \cite{kingma2015adam} for adaptive first- and second-moment gradient scaling. Dropout \cite{srivastava2014dropout} is applied at rate $p \in [0.1, 0.2]$ to prevent co-adaptation of hidden units, while weight decay ($L_2$ penalty) and validation-legitimate early stopping \cite{goodfellow2016deep} enforce manifold compactness. Batch normalization \cite{ioffe2015batch} is analyzed with care to prevent test-batch anomaly contamination.
+
+In financial applications, Pumsirirat and Yan \cite{pumsirirat2018credit} and Roy et al. \cite{roy2018deep} explored deep networks for fraud detection, but frequently utilized random cross-validation. Lucas et al. \cite{lucas2020dataset} proved that random partitioning in transaction streams induces severe temporal data leakage, creating substantial performance degradation in production.
+
+\subsection{Identified Literature Gaps and Team T033 Justification}
+Our synthesis of the literature identifies five critical gaps that our Phase~2 architecture resolves:
+\begin{enumerate}
+    \item \textbf{Eliminating Temporal Look-Ahead Leakage:} Unlike prior studies employing random cross-validation, we enforce an untouched chronological partition ($60\%$ train, $20\%$ val, $20\%$ test), strictly preserving causal time ordering.
+    \item \textbf{Rejection of Fraud Contamination and SMOTE:} Standard supervised models rely on synthetic oversampling (SMOTE), which interpolates non-existent frauds and assumes immediate label feedback. We adopt a strict \emph{legitimate-only} formulation ($y=0$ in training), reflecting operational verification lag.
+    \item \textbf{Early-Stopping Hygiene:} We evaluate early-stopping loss exclusively on validation-legitimate transactions, guaranteeing that ground-truth fraud labels never influence model checkpoint selection.
+    \item \textbf{Isotropic Reconstruction Weighting:} We mathematically demonstrate that standardizing feature variances on legitimate training data prevents single-feature dominance (e.g., `Amount`) in MSE anomaly scoring.
+    \item \textbf{Principled Hybrid Innovation:} We decouple non-linear manifold projection from density estimation, combining orthogonal signals: off-manifold distance (reconstruction error) and on-manifold abnormality ($-\log p(\mathbf{z})$).
+\end{enumerate}

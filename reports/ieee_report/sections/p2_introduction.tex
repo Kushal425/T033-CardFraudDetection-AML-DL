@@ -1,0 +1,35 @@
+% Section: Phase 2 Introduction
+% Author: Krishna Pramod Dubale (Task P2_01)
+% IEEE Conference Paper Section - Card Fraud Triage (Phase 2)
+
+\section{Introduction}
+\label{sec:p2_introduction}
+
+Financial transaction networks process billions of digital payments daily while operating under persistent threats from evolving adversarial fraud syndicates \cite{dalpozzolo2018credit, leborgne2022handbook}. In retail banking, automated transaction triage confronts three fundamental structural constraints: extreme class imbalance ($<0.2\%$ base rate), multi-week verification lag during dispute resolution, and continuous concept drift driven by circadian consumer spending and shifting fraud patterns \cite{dalpozzolo2015calibrating, lucas2020dataset}. Under these constraints, purely supervised classification is highly vulnerable to temporal look-ahead leakage and severe overfitting on stale fraud signatures.
+
+\subsection{Recap of Phase 1 Findings}
+\label{sec:p1_recap}
+In Phase~1 of Project T033, we investigated classical unsupervised anomaly detection and parametric density estimation on the benchmark ULB dataset (284,807 transactions across 48 continuous hours). Models were trained exclusively on legitimate records under a strict chronological partition (60\% train, 20\% validation, 20\% test). The empirical results established that linear \emph{Principal Component Analysis (PCA) reconstruction error} achieved the highest triage performance ($\text{PR-AUC} = 0.7425$, $\text{Recall@FPR=0.5\%} = 0.7733$ on the held-out test set), significantly outperforming full-space density estimation via Gaussian Mixture Models ($\text{PR-AUC} = 0.4142$) and classical baselines including Local Outlier Factor (0.4478), One-Class SVM (0.1322), and Isolation Forest (0.0577). Extensive statistical auditing revealed that severe leptokurtosis and heavy tails across PCA components degrade parametric Gaussian assumptions in the ambient 30-dimensional feature space, while subspace projection acts as a robust noise filter.
+
+\subsection{Phase 2 Motivation and Research Objectives}
+\label{sec:p2_motivation}
+Although PCA reconstruction error dominated Phase~1, PCA is mathematically restricted to planar linear subspaces. Real-world financial transaction distributions occupy non-linear, multi-scale manifolds embedded within the high-dimensional ambient space. Phase~2 extends our investigation by deploying deep neural representation architectures to address the central research question:
+\begin{quote}
+\emph{Does learning a non-linear compressed representation using a Deep Undercomplete Autoencoder, combined with latent-space Gaussian Mixture density estimation, significantly improve fraud triage compared with classical linear and density baselines?}
+\end{quote}
+
+To answer this question, Phase~2 develops:
+\begin{enumerate}
+    \item \textbf{Undercomplete and Denoising Autoencoders:} Non-linear neural architectures that optimize reconstruction Mean Squared Error (MSE) over legitimate transactions, learning the geometry of normal spending while suppressing noise via stochastic corruption.
+    \item \textbf{Decoupled Hybrid Architectures:} Three novel hybrid formulations:
+    \begin{itemize}
+        \item \textbf{Hybrid 1 ($H_1$, Latent-GMM):} Estimating multimodal probability densities $-\log p(\mathbf{z})$ exclusively within the compressed autoencoder bottleneck space $\mathbf{z} \in \mathbb{R}^k$.
+        \item \textbf{Hybrid 2 ($H_2$, Score Fusion):} Convex combination of standardized reconstruction error and ambient density scores.
+        \item \textbf{Hybrid 3 ($H_3$, DAGMM-Lite):} Density estimation over joint latent embeddings augmented with non-linear reconstruction distance features.
+    \end{itemize}
+    \item \textbf{Strict Anti-Leakage DL Pipeline:} PyTorch streaming data pipeline enforcing pure legitimate training tensors, validation-legitimate early stopping hygiene, and feature-variance balancing.
+    \item \textbf{Systematic Ablation Study:} Quantifying the independent impact of bottleneck dimensionality, regularization (dropout, weight decay), denoising noise level ($\sigma$), and training sample volume.
+\end{enumerate}
+
+\subsection{Paper Organization}
+The remainder of this report is organized as follows: Section~\ref{sec:p2_dl_literature} provides the deep learning literature review and formalizes the research gap; Section~\ref{sec:p2_dl_data_pipeline} details the deep learning data pipeline and anti-leakage invariants; Section~\ref{sec:p2_architecture} presents the autoencoder network design and regularization study; Section~\ref{sec:p2_hybrid_theory} analyzes the theoretical foundations of latent-space density modeling ($H_1$); Section~\ref{sec:p2_hybrid} introduces hybrid architectures ($H_2, H_3$) and the master ablation study; Section~\ref{sec:p2_validation} provides rigorous technical validation and paired bootstrap tests; and Section~\ref{sec:p2_results} synthesizes overall operational findings and concluding recommendations.
