@@ -1,0 +1,4 @@
+Dataset Split,Samples,Features,Batch Size,Total Batches,Memory (MB),Streaming Latency (ms/batch),Throughput (samples/sec),Est. Full Epoch Stream Time (s)
+Train (Legitimate Only),170524,31,512,334,20.17,0.89,575385.1,0.296
+Validation (Legit-Only Early Stop),56904,31,512,112,6.73,0.89,575385.1,0.099
+Test (Evaluation),56962,31,512,112,6.74,0.89,575385.1,0.099

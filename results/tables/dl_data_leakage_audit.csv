@@ -1,0 +1,6 @@
+Check Item,Observed Value,Expected Policy,Status,Mathematical Justification
+Training Set Legit-Only Isolation,170524 legit records (0 fraud),100% legitimate transactions; Class == 0,PASS,Unsupervised one-class formulation models normal manifold without anomaly distortion.
+StandardScaler Training Source,Diff on V1 mean: 0.00e+00,Fitted strictly on train_df[Class == 0],PASS,Pre-training normalizer cannot absorb validation or test statistics.
+Chronological Partition Invariance,Train max=120396s <= Val min=120396s <= Test min=145248s,Strict temporal sequence; non-overlapping time boundaries,PASS,Prevents future transaction memorization; mimics production deployment.
+Early-Stopping Loss Hygiene,56904 val-legit rows isolated (57 frauds excluded),Early stopping evaluates ONLY val-legit reconstruction loss,PASS,Fraud labels are not used to select training stopping epoch.
+No Synthetic Oversampling (SMOTE),0 synthetic records added,Unmodified empirical legitimate distribution,PASS,"SMOTE interpolates non-existent frauds, destroying rare boundary geometry."
