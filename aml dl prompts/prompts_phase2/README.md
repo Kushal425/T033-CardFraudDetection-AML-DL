@@ -198,3 +198,89 @@ Accuracy must not be used as the primary evaluation metric because the dataset i
 6. Share the completion summary with the team.
 
 **Do not run P2_05 until P2_01 through P2_04 have completed their work.**
+
+## MANDATORY GIT WORKFLOW — CREATE A NEW BRANCH BEFORE WORK
+
+After completing the mandatory documentation review, but BEFORE modifying or creating any project files, prepare an isolated Git branch for your assignment.
+
+### 1. Inspect Git status
+
+Run:
+
+```bash
+git status
+git branch --show-current
+git remote -v
+```
+
+Check:
+- Current branch.
+- Uncommitted changes.
+- Existing branch names.
+- Remote configuration.
+
+IMPORTANT:
+- Never discard existing user changes.
+- Never run `git reset --hard`.
+- Never use `git clean -fd`.
+- Never overwrite or delete someone else's work.
+- Do not stash, commit or discard pre-existing changes without approval.
+- If the working tree contains unrelated uncommitted changes that could be affected by switching branches, stop and report the situation before proceeding.
+
+### 2. Synchronize with the correct base branch
+
+Identify the team's agreed integration/base branch.
+
+Fetch the latest remote references:
+
+```bash
+git fetch origin
+```
+
+Do not assume that `main` is the correct base branch. Inspect the available branches and use the team's agreed base branch.
+
+If the base branch has uncommitted changes or the local branch is behind the remote, do not overwrite anything. Report the issue and request clarification if necessary.
+
+### 3. Create your dedicated branch
+
+Use the branch name assigned to you in this prompt.
+
+If the branch does not already exist:
+
+```bash
+git switch -c YOUR_ASSIGNED_BRANCH YOUR_BASE_BRANCH
+```
+
+If it already exists, inspect it and switch to it only after confirming it is the correct branch and there are no unsafe working-tree changes.
+
+Verify:
+
+```bash
+git branch --show-current
+git status
+```
+
+### 4. Work only on your assigned branch
+
+All files you create or modify for your assignment must be developed on your dedicated branch.
+
+Do not:
+- Work directly on the main or integration branch.
+- Switch to another member's feature branch.
+- Merge other members' branches.
+- Push directly to the main branch.
+- Modify unrelated files.
+
+### 5. Before completing your assignment
+
+Provide:
+- Branch name.
+- Base branch used.
+- Files created.
+- Files modified.
+- Git status.
+- Tests and checks performed.
+
+Do not commit or push unless explicitly authorized by the team lead.
+
+The purpose of this workflow is to keep every member's implementation isolated and make final integration safe.
