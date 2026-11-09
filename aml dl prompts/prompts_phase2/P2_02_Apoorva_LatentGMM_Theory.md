@@ -19,7 +19,7 @@ reports/refs_apoorva_p2.bib   docs/viva_notes/apoorva_p2.md
 Encode train-legit/val/test with Vani's chosen AE (and, for the ablation, latent dims 2/4/8/16). Fit `GaussianMixture` on train-legit codes; grid cov-type × K with AIC/BIC (as in Phase 1); score = −log p(z). Report val/test metrics through `evaluate_scores`; compare with Phase 1 GMM (raw features) and the AE alone using paired bootstrap (Krishna's `src/evaluation.py`).
 ## Task B — Why it should work (evidence, not claims)
 (i) Parameter count: full-cov GMM at d=30 vs d=8 — show the numbers; (ii) condition numbers / `reg_covar` sensitivity on raw vs latent; (iii) seed variance of PR-AUC raw-GMM vs latent-GMM; (iv) Gaussianity (skew/kurtosis, QQ) of latents vs raw features; (v) honest failure analysis if H1 doesn't help.
-## Task C — GMM ablations (feed Krishna's master ablation)
+## Task C — GMM ablations (feed Prachee's master ablation)
 Latent dim × cov-type × K grid → `ablation_gmm_*.csv` (val and test PR-AUC, 3 seeds).
 ## Task D — Theory (`p2_hybrid_theory.tex`)
 Density estimation in a learned manifold; change of variables caveat (latent density ≠ data density — the AE decoder is not volume-preserving, so −log p(z) is a *score*, not a likelihood of x); curse of dimensionality via parameter count; why reconstruction error and latent density capture different anomaly types (off-manifold vs on-manifold-but-low-density); BIC on latents.

@@ -16,7 +16,7 @@
 ## Step 2 — Final comparison (`notebooks/06b_final_comparison_phase2.ipynb`)
 Headline: GMM vs AE/DAE vs H1/H2/H3 vs classical baselines; recall@FPR, precision@capacity, alerts/10k, CIs, paired differences. Explicitly answer: does the AE beat the GMM significantly? Does any hybrid beat both parents with statistical support, and why/why not? Cost/complexity (params, time). Threats to validity; disclaimer.
 ## Step 3 — Report `reports/ieee_report/main_phase2.tex` (IEEEtran, 6–8 pages)
-Abstract · Introduction (Prachee) · DL Literature (Prachee) · Data Pipeline & Regularization (Prachee/Vani) · Architecture & Theory (Vani) · Hybrid Theory & Latent-GMM (Apoorva) · Hybrids & Ablation (Krishna) · Technical Validation (Krishna) · Results & Discussion (you) · Limitations · Conclusion · Contributions · References. Numbers via `paper_numbers_p2.tex`.
+Abstract · Introduction (Krishna) · DL Literature (Krishna) · Data Pipeline & Regularization (Krishna/Vani) · Architecture & Theory (Vani) · Hybrid Theory & Latent-GMM (Apoorva) · Hybrids & Ablation (Prachee) · Technical Validation (Prachee) · Results & Discussion (you) · Limitations · Conclusion · Contributions · References. Numbers via `paper_numbers_p2.tex`.
 ## Step 4 — Slides outline `docs/slides_phase2_outline.md` (12–15 slides; backup: AE architecture, regularization table, ablation table, overlap diagram).
 ## Step 5 — Polish & tag
 README updated with Phase 2 results; `CONTRIBUTIONS.md` regenerated from git; tag `phase2-final`; Release with PDF.

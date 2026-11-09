@@ -1,10 +1,10 @@
 > **PHASE 2 = DEEP LEARNING + HYBRID.** Prerequisite: Phase 1 is merged and tagged `phase1-final`. Do not modify any Phase 1 file or result; build on top of them. Branch name: `feat/<name>-p2`.
 
-# PHASE 2 TASK 04 — Krishna Pramod Dubale — Hybrids H2/H3, Ablation Orchestration, Phase 2 Master Evaluation
+# PHASE 2 TASK 04 — Prachee Dhar — Hybrids H2/H3, Ablation Orchestration, Phase 2 Master Evaluation
 **Rubric items you cover:** *Hybrid Innovation* (H2, H3), *Ablation Studies*, *Technical Validation*.
 
 ## 🤖 Antigravity prompt (paste this)
-> Read `docs/prompts/phase2/P2_04_Krishna_Hybrid_Ablation.md` completely. Implement ONLY the tasks in it. Only create/edit files under "Files you own". Never edit shared files or others' files; use `docs/requests/krishna.md`. Never fabricate numbers. Fusion weights and all hyper-parameters are chosen on VAL only; test once. Needs `results/scores/{gmm,ae,ae_dae,hybrid_latentgmm}_*.npy`, `src/autoencoder.py` — fail with a clear message if absent; test with labelled synthetic stubs never saved to `results/`. Reuse your Phase 1 `src/evaluation.py`. Branch `feat/krishna-p2`, prefix `[krishna]`. Never alter commit dates. At the end write `docs/viva_notes/krishna_p2.md`.
+> Read `docs/prompts/phase2/P2_04_Prachee_Hybrid_Ablation.md` completely. Implement ONLY the tasks in it. Only create/edit files under "Files you own". Never edit shared files or others' files; use `docs/requests/prachee.md`. Never fabricate numbers. Fusion weights and all hyper-parameters are chosen on VAL only; test once. Needs `results/scores/{gmm,ae,ae_dae,hybrid_latentgmm}_*.npy`, `src/autoencoder.py` — fail with a clear message if absent; test with labelled synthetic stubs never saved to `results/`. Reuse your Phase 1 `src/evaluation.py`. Branch `feat/prachee-p2`, prefix `[prachee]`. Never alter commit dates. At the end write `docs/viva_notes/prachee_p2.md`.
 
 ## Files you own
 ```
@@ -13,7 +13,7 @@ notebooks/09_hybrids_ablation.ipynb
 results/scores/hybrid_fusion_{val,test}.npy  hybrid_dagmmlite_{val,test}.npy
 results/tables/hybrid_*.csv  ablation_*.csv  eval_master_phase2.csv   results/figures/hybrid_*.png ablation_*.png
 reports/ieee_report/sections/p2_hybrid.tex  p2_ablation.tex  p2_validation.tex
-reports/refs_krishna_p2.bib   docs/viva_notes/krishna_p2.md
+reports/refs_prachee_p2.bib   docs/viva_notes/prachee_p2.md
 ```
 ## Task A — Hybrids (rationale first: GMM = explicit density but fragile in high-d; AE = flexible compression but no density and can over-generalise — a hybrid must have a *reason*)
 - **H2 Score fusion**: normalise GMM-NLL and AE-MSE with train-legit statistics (z-score on log-scores / rank), `s = w·s_gmm + (1−w)·s_ae`, w∈[0,1] step 0.1 on val; also max-fusion and rank-average. Plot w-sensitivity.
@@ -40,11 +40,11 @@ Why each hybrid should help; how w was chosen; what the ablation showed (incl. n
 | 1 | Day 1 | H2 fusion + stub tests |
 | 2 | Day 2 | H3 DAGMM-lite + overlap analysis |
 | 3 | Day 3 | ablation table, master table, LaTeX, viva notes |
-Each commit = a real, runnable increment, message format `[krishna] add ...`. No empty/whitespace commits.
+Each commit = a real, runnable increment, message format `[prachee] add ...`. No empty/whitespace commits.
 
 **No-conflict rules**
 1. Edit ONLY the files under "Files you own". Never touch shared files (`src/data.py`, `src/metrics.py`, `src/utils.py`, `configs/config.yaml`, README).
-2. Work on branch `feat/krishna-p2`. Before every push: `git fetch origin && git rebase origin/main`, then `git push -u origin feat/krishna-p2`.
+2. Work on branch `feat/prachee-p2`. Before every push: `git fetch origin && git rebase origin/main`, then `git push -u origin feat/prachee-p2`.
 3. Open a PR to `main`; Kushal merges from the PR page. Never `git push --force`.
 4. Only the owner edits their notebook.
-5. Need a shared-file change? Write it to `docs/requests/krishna.md` and tell Kushal.
+5. Need a shared-file change? Write it to `docs/requests/prachee.md` and tell Kushal.

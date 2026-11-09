@@ -1,21 +1,21 @@
 > **PHASE 2 = DEEP LEARNING + HYBRID.** Prerequisite: Phase 1 is merged and tagged `phase1-final`. Do not modify any Phase 1 file or result; build on top of them. Branch name: `feat/<name>-p2`.
 
-# PHASE 2 TASK 01 — Prachee Dhar — DL Literature Review, DL Data Pipeline Documentation & Phase 2 Report Sections
+# PHASE 2 TASK 01 — Krishna Pramod Dubale — DL Literature Review, DL Data Pipeline Documentation & Phase 2 Report Sections
 **Rubric items you cover:** *Deep Learning Literature Review*, *DL Dataset & Regularization* (documentation & data-side analysis), *Presentation*.
 
 ## 🤖 Antigravity prompt (paste this)
-> Read `docs/prompts/phase2/P2_01_Prachee_DL_Literature_Pipeline.md` completely. Implement ONLY the tasks in it. Only create/edit files under "Files you own". Never edit shared files or others' files; use `docs/requests/prachee.md`. Never fabricate citations (mark each `[VERIFY]`) or numbers (read CSV/code outputs). Branch `feat/prachee-p2`, commits prefix `[prachee]`. Never alter commit dates. At the end write `docs/viva_notes/prachee_p2.md`.
+> Read `docs/prompts/phase2/P2_01_Krishna_DL_Literature_Pipeline.md` completely. Implement ONLY the tasks in it. Only create/edit files under "Files you own". Never edit shared files or others' files; use `docs/requests/krishna.md`. Never fabricate citations (mark each `[VERIFY]`) or numbers (read CSV/code outputs). Branch `feat/krishna-p2`, commits prefix `[krishna]`. Never alter commit dates. At the end write `docs/viva_notes/krishna_p2.md`.
 
 ## Files you own
 ```
-reports/dl_literature_review.md   reports/refs_prachee_p2.bib
+reports/dl_literature_review.md   reports/refs_krishna_p2.bib
 reports/ieee_report/sections/p2_introduction.tex
 reports/ieee_report/sections/p2_dl_literature.tex
 reports/ieee_report/sections/p2_dl_data_pipeline.tex
 notebooks/07_dl_data_checks.ipynb   src/eda_dl.py
 results/tables/dl_data_*.csv   results/figures/dl_data_*.png
 docs/slides_phase2_data_section.md
-docs/viva_notes/prachee_p2.md
+docs/viva_notes/krishna_p2.md
 ```
 ## Task A — DL literature review (`reports/dl_literature_review.md`, ≥ 1.5 pages, ≥ 10 refs, all `[VERIFY]`)
 Autoencoders (Hinton & Salakhutdinov 2006); denoising AE (Vincent et al. 2008); AE anomaly detection (Sakurada & Yairi 2014; An & Cho 2015); DAGMM (Zong et al. 2018); Adam (Kingma & Ba 2015); dropout (Srivastava et al. 2014); batch norm (Ioffe & Szegedy 2015); *Deep Learning* (Goodfellow et al. 2016) for regularization/early stopping; over-generalisation of AEs to anomalies; fraud-specific deep learning work. Comparison table (Paper | Year | Method | Dataset | Metric | Limitation) + explicit gap statement tying to our design (legit-only training, chronological split, val-chosen thresholds, hybrid with a justified rationale).
@@ -40,11 +40,11 @@ Why legit-only training; why val-legit early stopping doesn't leak; why high-var
 | 1 | Day 1 | DL literature review draft + refs |
 | 2 | Day 2 | src/eda_dl.py + notebook 07 checks |
 | 3 | Day 3 | LaTeX sections + slides content + viva notes |
-Each commit = a real, runnable increment, message format `[prachee] add ...`. No empty/whitespace commits.
+Each commit = a real, runnable increment, message format `[krishna] add ...`. No empty/whitespace commits.
 
 **No-conflict rules**
 1. Edit ONLY the files under "Files you own". Never touch shared files (`src/data.py`, `src/metrics.py`, `src/utils.py`, `configs/config.yaml`, README).
-2. Work on branch `feat/prachee-p2`. Before every push: `git fetch origin && git rebase origin/main`, then `git push -u origin feat/prachee-p2`.
+2. Work on branch `feat/krishna-p2`. Before every push: `git fetch origin && git rebase origin/main`, then `git push -u origin feat/krishna-p2`.
 3. Open a PR to `main`; Kushal merges from the PR page. Never `git push --force`.
 4. Only the owner edits their notebook.
-5. Need a shared-file change? Write it to `docs/requests/prachee.md` and tell Kushal.
+5. Need a shared-file change? Write it to `docs/requests/krishna.md` and tell Kushal.

@@ -18,10 +18,10 @@ Read every existing Markdown file inside:
 - Any other directory containing Phase 2-specific prompts or instructions.
 
 This includes:
-- `P2_01_Prachee_DL_Literature_Pipeline.md`
+- `P2_01_Krishna_DL_Literature_Pipeline.md`
 - `P2_02_Apoorva_LatentGMM_Theory.md`
 - `P2_03_Vani_Autoencoder.md`
-- `P2_04_Krishna_Hybrid_Ablation.md`
+- `P2_04_Prachee_Hybrid_Ablation.md`
 - `P2_05_Kushal_FINAL.md`
 - `prompts_phase2/README.md`
 
@@ -102,10 +102,10 @@ The central research question is:
 
 | Prompt | Member | Responsibility |
 |---|---|---|
-| P2_01 | Prachee | Deep Learning literature and pipeline design |
+| P2_01 | Krishna | Deep Learning literature and pipeline design |
 | P2_02 | Apoorva | Latent-space GMM theory and design |
 | P2_03 | Vani | Deep Autoencoder implementation |
-| P2_04 | Krishna | Hybrid model and ablation study |
+| P2_04 | Prachee | Hybrid model and ablation study |
 | P2_05 | Kushal | Final integration and report |
 
 ## 3. Execution order
