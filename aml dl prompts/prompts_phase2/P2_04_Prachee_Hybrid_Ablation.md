@@ -4,7 +4,7 @@
 **Rubric items you cover:** *Hybrid Innovation* (H2, H3), *Ablation Studies*, *Technical Validation*.
 
 ## 🤖 Antigravity prompt (paste this)
-> Read `docs/prompts/phase2/P2_04_Krishna_Hybrid_Ablation.md` completely. Implement ONLY the tasks in it. Only create/edit files under "Files you own". Never edit shared files or others' files; use `docs/requests/prachee.md`. Never fabricate numbers. Fusion weights and all hyper-parameters are chosen on VAL only; test once. Needs `results/scores/{gmm,ae,ae_dae,hybrid_latentgmm}_*.npy`, `src/autoencoder.py` — fail with a clear message if absent; test with labelled synthetic stubs never saved to `results/`. Reuse your Phase 1 `src/evaluation.py`. Branch `feat/prachee-p2`, prefix `[prachee]`. Never alter commit dates. At the end write `docs/viva_notes/prachee_p2.md`.
+> Read `docs/prompts/phase2/P2_04_Prachee_Hybrid_Ablation.md` completely. Implement ONLY the tasks in it. Only create/edit files under "Files you own". Never edit shared files or others' files; use `docs/requests/prachee.md`. Never fabricate numbers. Fusion weights and all hyper-parameters are chosen on VAL only; test once. Needs `results/scores/{gmm,ae,ae_dae,hybrid_latentgmm}_*.npy`, `src/autoencoder.py` — fail with a clear message if absent; test with labelled synthetic stubs never saved to `results/`. Reuse your Phase 1 `src/evaluation.py`. Branch `feat/prachee-p2`, prefix `[prachee]`. Never alter commit dates. At the end write `docs/viva_notes/prachee_p2.md`.
 
 ## Files you own
 ```

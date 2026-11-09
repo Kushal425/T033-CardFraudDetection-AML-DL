@@ -4,7 +4,7 @@
 **Rubric items you cover:** *Deep Learning Literature Review*, *DL Dataset & Regularization* (documentation & data-side analysis), *Presentation*.
 
 ## 🤖 Antigravity prompt (paste this)
-> Read `docs/prompts/phase2/P2_01_Prachee_DL_Literature_Pipeline.md` completely. Implement ONLY the tasks in it. Only create/edit files under "Files you own". Never edit shared files or others' files; use `docs/requests/krishna.md`. Never fabricate citations (mark each `[VERIFY]`) or numbers (read CSV/code outputs). Branch `feat/krishna-p2`, commits prefix `[krishna]`. Never alter commit dates. At the end write `docs/viva_notes/krishna_p2.md`.
+> Read `docs/prompts/phase2/P2_01_Krishna_DL_Literature_Pipeline.md` completely. Implement ONLY the tasks in it. Only create/edit files under "Files you own". Never edit shared files or others' files; use `docs/requests/krishna.md`. Never fabricate citations (mark each `[VERIFY]`) or numbers (read CSV/code outputs). Branch `feat/krishna-p2`, commits prefix `[krishna]`. Never alter commit dates. At the end write `docs/viva_notes/krishna_p2.md`.
 
 ## Files you own
 ```

@@ -23,7 +23,7 @@ docs/viva_notes/vani.md
 ```
 
 ## Task A — Models (`src/autoencoder.py`, PyTorch)
-1. `UndercompleteAE(d_in, latent_dim, hidden=[24,16], act='relu', dropout=0.0, batchnorm=False)` — symmetric encoder/decoder, linear output layer, `encode()` method exposing the bottleneck (Krishna's hybrid needs it).
+1. `UndercompleteAE(d_in, latent_dim, hidden=[24,16], act='relu', dropout=0.0, batchnorm=False)` — symmetric encoder/decoder, linear output layer, `encode()` method exposing the bottleneck (Prachee's hybrid needs it).
 2. `DenoisingAE` = same net, training adds Gaussian noise `x̃ = x + σ·ε` (σ ∈ {0.05,0.1,0.2,0.5}); loss compares reconstruction to the CLEAN x; no noise at inference.
 3. Loss = MSE. Score = per-sample MSE (mean over features). Also compute per-feature error contribution for explanation.
 4. Init: He/Kaiming for ReLU. Optimizer Adam (lr 1e-3, weight_decay 1e-5), batch 512, max 100 epochs, `ReduceLROnPlateau`, **early stopping patience 10 on val-LEGIT MSE only**. `torch.manual_seed`, deterministic flags, CPU/GPU auto.
@@ -39,7 +39,7 @@ docs/viva_notes/vani.md
 - Diagnostics: histogram of recon error legit vs fraud; top-20 false positives vs top-20 caught frauds and which features dominate error; latent space 2-D scatter (latent_dim=2 run, or PCA of codes) coloured by class; linear-AE ≈ PCA sanity check (compare to PCA reconstruction error with same k — coordinate with Krishna's PCA baseline).
 - Technical validation: gradient-norm / loss-NaN checks, reconstruction of a held-out legit batch vs fraud batch, runtime, parameter count, inference latency per 10k transactions.
 
-## Task C — (moved) DL literature review is owned by Prachee (`P2_01`). You must still know the key references for your viva.
+## Task C — (moved) DL literature review is owned by Krishna (`P2_01`). You must still know the key references for your viva.
 
 ## Task D — Theory (`p2_architecture.tex`)
 Encoder f_θ, decoder g_φ, objective min E‖x−g(f(x))‖²; why a linear AE with MSE spans the PCA subspace; role of nonlinearity; denoising as learning the data manifold's score (Vincent 2011, `[VERIFY]`); bias–variance view of bottleneck size; why reconstruction error is an anomaly score and when it fails (anomalies in the principal subspace; scale dominated by high-variance features).

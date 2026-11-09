@@ -18,10 +18,10 @@ Read every existing Markdown file inside:
 - Any other directory containing Phase 2-specific prompts or instructions.
 
 This includes:
-- `P2_01_Prachee_DL_Literature_Pipeline.md`
+- `P2_01_Krishna_DL_Literature_Pipeline.md`
 - `P2_02_Apoorva_LatentGMM_Theory.md`
 - `P2_03_Vani_Autoencoder.md`
-- `P2_04_Krishna_Hybrid_Ablation.md`
+- `P2_04_Prachee_Hybrid_Ablation.md`
 - `P2_05_Kushal_FINAL.md`
 - `prompts_phase2/README.md`
 

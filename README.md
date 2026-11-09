@@ -21,10 +21,10 @@ Credit card fraud is a severe, highly imbalanced classification problem: genuine
 | Name | Enrollment | Phase 1 Role | Phase 2 Role |
 |---|---|---|---|
 | Kushal Sarkar | 2401020033 | Scaffold, splits, metrics, integration, report assembly | Integration, hybrid ablation |
-| Prachee Dhar | 2401010330 | Literature review, EDA, dataset quality | DL literature, dataset regularization |
+| Prachee Dhar | 2401010330 | Literature review, EDA, dataset quality | Hybrid model (H2/H3), ablation, master evaluation |
 | Apoorva Choudhary | 2401010092 | Feature engineering, GMM grid & theory | Latent GMM theory |
 | Vani Rudra | 2401010490 | Classical anomaly-detection baselines | Autoencoder implementation |
-| Krishna Pramod Dubale | 2401010239 | Evaluation toolkit, bootstrap CIs, threshold analysis | Hybrid ablation, comparisons |
+| Krishna Pramod Dubale | 2401010239 | Evaluation toolkit, bootstrap CIs, threshold analysis | DL literature review, DL data pipeline |
 
 Faculty: Shobhit Johri · Arun Chauhan · Ashwin Tewary (Rishihood University)
 
