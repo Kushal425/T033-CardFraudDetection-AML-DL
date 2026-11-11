@@ -1,0 +1,155 @@
+% reports/ieee_report/sections/p2_architecture.tex
+% Author: Vani Rudra (Task P2_03 — Autoencoder Architecture & Theory)
+% IEEE Conference Paper Section — Card Fraud Triage (Phase 2)
+
+\section{Deep Autoencoder Architecture \& Theory}
+\label{sec:p2_architecture}
+
+To model the non-linear manifold of legitimate credit-card transactions without
+relying on delayed fraud labels, we implement both a symmetric Undercomplete
+Autoencoder (AE) and a Denoising Autoencoder (DAE).  Consistent with Phase~1
+(Sec.~\ref{sec:p2_dl_data_pipeline}), all neural models are trained
+exclusively on the $170{,}524$ legitimate training transactions
+($\mathbf{X}_{\text{train,legit}} \in \mathbb{R}^{170524 \times 31}$),
+early-stopped strictly on the $56{,}904$ validation-legitimate records, and
+scored by per-sample Mean Squared Error (MSE) so that higher values denote
+greater abnormality.
+
+% ─── 1. Formal Formulation ───────────────────────────────────────────────────
+\subsection{Encoder--Decoder Formulation and Objective}
+\label{sec:ae_formulation}
+
+Let $\mathbf{x} \in \mathbb{R}^{d}$ ($d = 31$ for the base feature set) denote
+a standardized transaction vector.  An autoencoder consists of an encoder
+$f_{\boldsymbol{\theta}} : \mathbb{R}^{d} \to \mathbb{R}^{k}$ mapping input
+vectors into a low-dimensional bottleneck code
+$\mathbf{z} = f_{\boldsymbol{\theta}}(\mathbf{x})$, and a symmetric decoder
+$g_{\boldsymbol{\phi}} : \mathbb{R}^{k} \to \mathbb{R}^{d}$ producing the
+reconstruction $\hat{\mathbf{x}} = g_{\boldsymbol{\phi}}(\mathbf{z})$.
+Parameters $(\boldsymbol{\theta}, \boldsymbol{\phi})$ are learned by minimizing
+the expected reconstruction MSE over the legitimate training distribution:
+\begin{equation}
+    \min_{\boldsymbol{\theta}, \boldsymbol{\phi}} \;
+    \mathbb{E}_{\mathbf{x} \sim P_{\text{legit}}}
+    \left[ \frac{1}{d} \, \bigl\| \mathbf{x} - g_{\boldsymbol{\phi}}\bigl(f_{\boldsymbol{\theta}}(\mathbf{x})\bigr) \bigr\|_2^2 \right]
+    + \lambda \, \|\boldsymbol{\theta}\|_2^2 + \lambda \, \|\boldsymbol{\phi}\|_2^2,
+    \label{eq:ae_objective}
+\end{equation}
+where $\lambda$ is the AdamW/Adam weight-decay coefficient.  The encoder uses
+hidden layer widths $[h_1, h_2]$ (default $[24, 16]$) with ReLU-family
+activations initialized via He/Kaiming normal initialization~\cite{he2015delving},
+followed by a bottleneck of width $k < d$.  The decoder mirrors the encoder
+($k \to h_2 \to h_1 \to d$) and terminates in an unconstrained \emph{linear}
+output layer because standardized input features are real-valued and unbounded.
+
+At inference time, each transaction receives an anomaly score equal to its
+per-sample MSE across coordinates:
+\begin{equation}
+    s_{\text{AE}}(\mathbf{x}) = \frac{1}{d} \sum_{j=1}^{d} \bigl(x_j - \hat{x}_j\bigr)^2,
+    \label{eq:ae_score}
+\end{equation}
+while individual coordinate residuals $e_j(\mathbf{x}) = (x_j - \hat{x}_j)^2$
+provide feature-level interpretability for flagged alerts.  Additionally, the
+bottleneck representation $\mathbf{z} = f_{\boldsymbol{\theta}}(\mathbf{x}) \in
+\mathbb{R}^{k}$ is exposed via the \texttt{encode()} interface for downstream
+latent-space GMM density estimation ($H_1$) and hybrid scoring ($H_2, H_3$).
+
+% ─── 2. Undercompleteness, Bias-Variance, and PCA Equivalence ────────────────
+\subsection{Undercompleteness, PCA Equivalence, and Nonlinearity}
+\label{sec:ae_pca_theory}
+
+\textbf{Why the bottleneck must be undercomplete ($k < d$).}
+If $k \ge d$ (or if network capacity is unconstrained), minimizing
+Eq.~\eqref{eq:ae_objective} permits the trivial identity mapping
+$g_{\boldsymbol{\phi}}(f_{\boldsymbol{\theta}}(\mathbf{x})) \approx \mathbf{x}$
+across the entire ambient space $\mathbb{R}^d$.  In that degenerate regime,
+both legitimate transactions and fraudulent outliers are reconstructed with
+near-zero error, collapsing anomaly contrast.  Enforcing $k < d$ creates an
+information bottleneck: the network has only $k$ degrees of freedom to encode
+normal spending correlations, forcing high error on off-manifold transactions.
+
+\textbf{Bias--variance trade-off in $k$.}
+Selecting $k$ balances reconstruction fidelity against anomaly discrimination:
+\begin{itemize}
+    \item \emph{Too small ($k = 2$):} High bias / underfitting — legitimate
+          transactions cannot be faithfully reconstructed, elevating baseline
+          noise and obscuring genuine fraud spikes.
+    \item \emph{Too large ($k \ge 16$):} Low bias / over-generalization — the
+          decoder captures high-order variation including regions populated by
+          fraudulent records, reducing separation.
+\end{itemize}
+We sweep $k \in \{2, 4, 8, 12, 16\}$ on the validation set to locate the
+optimal operating point.
+
+\textbf{Linear AE vs.\ PCA and the role of nonlinearity.}
+When all activations in $f_{\boldsymbol{\theta}}$ and $g_{\boldsymbol{\phi}}$
+are linear and trained under MSE, Baldi and Hornik~\cite{baldi1989neural}
+showed that the global minimum of Eq.~\eqref{eq:ae_objective} has a unique
+subspace solution: the encoder/decoder weights span the exact same $k$-dimensional
+principal subspace as Principal Component Analysis (PCA).  We verify this
+analytically in Sec.~\ref{sec:p2_ae_results} as a sanity check against our
+Phase~1 PCA baseline.  Replacing linear projections with ReLU, LeakyReLU, or
+Tanh activations enables the autoencoder to learn curved, piecewise-linear
+(or smooth) non-linear manifolds~\cite{hinton2006reducing} rather than a single
+flat hyperplane.
+
+% ─── 3. Denoising Autoencoder & Score Matching ───────────────────────────────
+\subsection{Denoising Autoencoders and Manifold Score Matching}
+\label{sec:dae_theory}
+
+Even with $k < d$, a deep multi-layer autoencoder can memorize local neighborhoods
+around training points.  A Denoising Autoencoder (DAE)~\cite{vincent2008extracting}
+explicitly regularizes the representation by corrupting each clean training
+input with isotropic Gaussian noise during training:
+\begin{equation}
+    \tilde{\mathbf{x}} = \mathbf{x} + \sigma \boldsymbol{\varepsilon},
+    \qquad \boldsymbol{\varepsilon} \sim \mathcal{N}(\mathbf{0}, \mathbf{I}_d),
+    \quad \sigma \in \{0.05, 0.1, 0.2, 0.5\},
+\end{equation}
+and minimizing the reconstruction error against the \emph{clean} target:
+\begin{equation}
+    \mathcal{L}_{\text{DAE}}(\boldsymbol{\theta}, \boldsymbol{\phi})
+    = \mathbb{E}_{\mathbf{x}, \boldsymbol{\varepsilon}}
+    \left[ \frac{1}{d} \, \bigl\| \mathbf{x} - g_{\boldsymbol{\phi}}\bigl(f_{\boldsymbol{\theta}}(\tilde{\mathbf{x}})\bigr) \bigr\|_2^2 \right].
+    \label{eq:dae_loss}
+\end{equation}
+At inference time, no noise is injected ($\sigma = 0$), and the score remains
+Eq.~\eqref{eq:ae_score}.  As proven by Vincent~\cite{vincent2011connection},
+training a DAE with small Gaussian noise $\sigma$ approximates score matching:
+the residual vector $g_{\boldsymbol{\phi}}(f_{\boldsymbol{\theta}}(\mathbf{x})) - \mathbf{x}$
+estimates $\sigma^2 \nabla_{\mathbf{x}} \log p(\mathbf{x})$, pulling corrupted
+points back onto the high-density normal manifold.
+
+% ─── 4. When Reconstruction Error Fails ──────────────────────────────────────
+\subsection{Failure Modes of Reconstruction-Error Scoring}
+\label{sec:ae_failure_modes}
+
+While MSE reconstruction error effectively flags \emph{off-manifold} anomalies,
+it exhibits two structural blind spots that motivate Phase~2 hybrid models:
+\begin{enumerate}
+    \item \textbf{In-manifold (on-subspace) anomalies:} A fraudulent transaction
+          whose feature vector happens to lie on or near the learned $k$-dimensional
+          manifold — for example, a legitimate-looking coordinate combination in a
+          sparse tail region — achieves small $\|\mathbf{x} - \hat{\mathbf{x}}\|_2^2$
+          and goes undetected.  Modeling latent density $-\log p(\mathbf{z})$
+          directly addresses this gap.
+    \item \textbf{High-variance coordinate dominance:} Unweighted MSE scales
+          proportionally to coordinate variance $\operatorname{Var}(X_j)$.
+          Without train-legit standardization, heavy-tailed features (such as raw
+          \texttt{Amount}) dominate both gradients and anomaly scores, masking
+          discriminative deviations in lower-variance PCA components.
+\end{enumerate}
+
+% ─── 5. Optimization & Regularization Protocol ───────────────────────────────
+\subsection{Training and Regularization Protocol}
+\label{sec:ae_training_protocol}
+
+All models are trained with Adam~\cite{kingma2015adam} (initial learning rate
+$10^{-3}$, batch size $512$, max $100$ epochs), gradient-norm clipping at $5.0$,
+and \texttt{ReduceLROnPlateau} (factor $0.5$, patience $5$).  Early stopping
+monitors \emph{validation-legitimate} MSE exclusively (patience $10$), ensuring
+fraud labels never influence gradient updates or checkpoint stopping.  We
+systematically ablate $L_2$ weight decay, dropout~\cite{srivastava2014dropout},
+Gaussian input noise (DAE), batch normalization, early stopping, and $L_1$
+latent sparsity to evaluate generalization and train--validation gap.
+

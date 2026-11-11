@@ -1,0 +1,13 @@
+{
+  "model_type": "UndercompleteAE",
+  "d_in": 31,
+  "latent_dim": 8,
+  "hidden": [
+    32,
+    16
+  ],
+  "act": "leaky_relu",
+  "dropout": 0.0,
+  "batchnorm": false,
+  "n_params": 3399
+}
