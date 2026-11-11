@@ -1,0 +1,143 @@
+% reports/ieee_report/sections/p2_ae_results.tex
+% Author: Vani Rudra (Task P2_03 — Autoencoder Results & Regularization Study)
+% IEEE Conference Paper Section — Card Fraud Triage (Phase 2)
+
+\section{Autoencoder Experiments \& Results}
+\label{sec:p2_ae_results}
+
+We present empirical results for the Undercomplete Autoencoder (AE) and
+Denoising Autoencoder (DAE) on the chronological ULB split
+($170{,}524$ train-legit, $56{,}961$ val, $56{,}962$ test).  All model
+selection uses \emph{validation PR-AUC} exclusively; test labels are touched
+only for final evaluation.
+
+% ─── 1. Hyperparameter Selection ─────────────────────────────────────────────
+\subsection{Hyperparameter Search and Architecture Selection}
+\label{sec:ae_hp_search}
+
+A stratified budget of $30$ configurations ($20$ AE, $10$ DAE) explored
+bottleneck size $k \in \{2,4,8,12,16\}$, hidden widths
+$\{[24,16],[32,16],[24,20]\}$, dropout $\{0.0, 0.1, 0.2\}$, weight decay
+$\{0, 10^{-5}, 10^{-4}\}$, activation $\{\text{ReLU}, \text{LeakyReLU}, \text{Tanh}\}$,
+and DAE noise $\sigma \in \{0.05, 0.1, 0.2, 0.5\}$.
+The selected configurations are:
+\begin{itemize}
+    \item \textbf{Undercomplete AE:} $31 \to 32 \to 16 \to 12 \to 16 \to 32 \to 31$
+          (\texttt{LeakyReLU}, dropout $0.0$, weight decay $10^{-5}$, $3{,}531$
+          parameters), achieving validation $\text{PR-AUC} = 0.47702$,
+          $\text{Recall@0.5\% FPR} = 0.70175$, and val-legit $\text{MSE} = 0.24185$.
+    \item \textbf{Denoising AE:} $31 \to 24 \to 16 \to 16 \to 16 \to 24 \to 31$
+          (\texttt{LeakyReLU}, dropout $0.0$, weight decay $10^{-5}$, $\sigma = 0.2$,
+          $2{,}895$ parameters), achieving validation $\text{PR-AUC} = 0.46091$,
+          $\text{Recall@0.1\% FPR} = 0.71930$, $\text{Recall@0.5\% FPR} = 0.73684$,
+          and val-legit $\text{MSE} = 0.34673$.
+\end{itemize}
+Across the sweep, \texttt{Tanh} activations ($\text{PR-AUC} \le 0.0673$) saturated
+on heavy-tailed standardized anomalies, while nonzero dropout ($0.1$--$0.2$)
+excessively inflated baseline reconstruction loss.
+
+% ─── 2. Five-Seed Evaluation & Official Scores ───────────────────────────────
+\subsection{Five-Seed Stability and Final Performance}
+\label{sec:ae_5seed}
+
+Table~\ref{tab:ae_5seed} summarizes performance across five random seeds
+$\{42, 123, 456, 789, 1024\}$.  Consistent with the protocol, the median-seed
+run (by validation PR-AUC: seed $1024$ for AE, seed $123$ for DAE) provides
+the official score arrays (\texttt{ae\_\{val,test\}.npy},
+\texttt{ae\_dae\_\{val,test\}.npy}).
+
+\begin{table}[t]
+\caption{Five-Seed Stability and Median-Seed Official Evaluation (Base Features, $d=31$)}
+\label{tab:ae_5seed}
+\centering
+\footnotesize
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Model / Split} & \textbf{PR-AUC} & \textbf{ROC-AUC} & \textbf{Rec@0.1\%} & \textbf{Rec@0.5\%} \\
+\midrule
+AE (5-seed Val)   & $0.269 \pm 0.132$ & $0.918 \pm 0.008$ & $0.411 \pm 0.146$ & $0.660 \pm 0.079$ \\
+AE (5-seed Test)  & $0.395 \pm 0.091$ & $0.917 \pm 0.009$ & $0.544 \pm 0.068$ & $0.720 \pm 0.051$ \\
+AE (Median Test)  & $0.35737$         & $0.90215$         & $0.53333$         & $0.68000$ \\
+\midrule
+DAE (5-seed Val)  & $0.279 \pm 0.169$ & $0.938 \pm 0.016$ & $0.375 \pm 0.316$ & $0.723 \pm 0.013$ \\
+DAE (5-seed Test) & $0.393 \pm 0.143$ & $0.936 \pm 0.016$ & $0.565 \pm 0.173$ & $0.765 \pm 0.016$ \\
+DAE (Median Test) & $0.48183$         & $0.93216$         & $0.70667$         & $0.77333$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Two key findings emerge.  First, DAE substantially outperforms standard AE in
+median test PR-AUC ($0.48183$ vs.\ $0.35737$) and matches Phase~1's top
+classical baseline (PCA) on test $\text{Recall@0.5\% FPR} = 0.77333$, with
+tight five-seed stability at $\text{Recall@0.5\%}$ ($0.765 \pm 0.016$).
+Second, PR-AUC exhibits high seed variance ($\pm 0.09$--$0.14$ on test) because
+a handful of extreme legitimate outliers near the top of the error tail shift
+early precision sharply across initializations.
+
+When re-run on the $31$-dimensional \texttt{engineered} feature set
+(pruning $V_{22}, V_{23}, V_{25}$ and adding geometric $V$-norms), both models
+improve: AE reaches test $\text{PR-AUC} = 0.37236$ ($\text{Rec@0.5\%} = 0.76000$)
+and DAE reaches val $\text{PR-AUC} = 0.56174$, test $\text{PR-AUC} = 0.52126$
+($\text{Rec@0.5\%} = 0.77333$).
+
+% ─── 3. Regularization Study ─────────────────────────────────────────────────
+\subsection{Regularization Ablation Study}
+\label{sec:ae_regularization}
+
+Table~\ref{tab:ae_reg} isolates individual regularizers from an unregularized
+$[24, 16] \to 8 \to [16, 24]$ ReLU baseline.  Adding $L_1$ latent sparsity
+($\lambda = 10^{-3}$) yields the best validation PR-AUC ($0.30169$), lowest
+val-legit MSE ($0.40912$), and smallest train--validation gap ($0.13422$),
+catching $63.16\%$ of validation frauds at $0.1\%$ FPR.  Conversely, applying
+$20\%$ dropout in the narrow bottleneck causes severe underfitting
+($\text{train MSE} = 0.68700$, $\text{val MSE} = 0.91435$), dropping PR-AUC to
+$0.04623$.
+
+\begin{table}[t]
+\caption{Regularization Ablation on Validation Split ($d=31$, Bottleneck $k=8$)}
+\label{tab:ae_reg}
+\centering
+\footnotesize
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Configuration} & \textbf{Val PR-AUC} & \textbf{Rec@0.1\%} & \textbf{Val MSE} & \textbf{Train--Val Gap} \\
+\midrule
+No regularization            & $0.29431$ & $0.45614$ & $0.42881$ & $0.14738$ \\
+$+ L_2$ weight decay ($10^{-5}$) & $0.14821$ & $0.29825$ & $0.43654$ & $0.15868$ \\
+$+ \text{Dropout } (p=0.2)$  & $0.04623$ & $0.00000$ & $0.91435$ & $0.22735$ \\
+$+ \text{Input noise } (\sigma=0.1)$ & $0.13643$ & $0.35088$ & $0.43231$ & $0.16174$ \\
+$+ \text{Early stopping } (p=10)$ & $0.29431$ & $0.45614$ & $0.42881$ & $0.14738$ \\
+$+ \text{BatchNorm}$         & $0.18399$ & $0.38596$ & $0.44611$ & $0.15128$ \\
+$+ L_1 \text{ latent } (10^{-3})$ & $\mathbf{0.30169}$ & $\mathbf{0.63158}$ & $\mathbf{0.40912}$ & $\mathbf{0.13422}$ \\
+All combined (dropout+DAE)   & $0.06980$ & $0.01754$ & $0.71362$ & $0.16587$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ─── 4. Diagnostics, Sanity Checks & Runtime ─────────────────────────────────
+\subsection{Diagnostics, Linear-AE Sanity Check, and Compute Profile}
+\label{sec:ae_diagnostics}
+
+\textbf{Linear-AE $\approx$ PCA verification.}
+Training a linear autoencoder (\texttt{hidden=[]}, \texttt{act='linear'}) yields
+val-legit MSE of $0.90312$ vs.\ exact PCA $0.91221$ at $k=8$ (Pearson
+$r = 0.99334$) and $0.60055$ vs.\ $0.60596$ at $k=16$ ($r = 0.93399$),
+confirming subspace equivalence.
+
+\textbf{Feature-error decomposition.}
+Per-feature reconstruction MSE on validation shows frauds produce $77.3\times$
+higher error on $V_{17}$, $59.9\times$ on $V_{14}$, $39.1\times$ on $V_{27}$,
+and $32.1\times$ on $V_{4}$ compared to legitimate transactions.  Inspecting the
+top-20 false positives vs.\ top-20 caught frauds reveals that caught frauds are
+dominated by $V_{14}$ ($23.86$), $V_{17}$ ($18.70$), and $V_{4}$ ($9.82$),
+whereas top false positives exhibit large excursions in $V_3$ ($16.61$ vs.\
+$2.85$) and $V_8$ ($10.09$ vs.\ $1.82$).
+
+\textbf{Technical validation and latency.}
+Zero NaN/Inf events occurred across all runs; gradient norms stayed bounded in
+$[0.21, 0.81]$.  Held-out fraud batch MSE exceeds legitimate batch MSE by
+$10.99\times$ (AE: $2.445$ vs.\ $0.222$) and $15.59\times$ (DAE: $4.961$ vs.\
+$0.318$).  Training runs at $0.30$--$0.34$\,s/epoch on CPU ($\approx 30$--$34$\,s
+total), with $10{,}000$-transaction inference latency of $1.8$\,ms (AE) and
+$1.4$\,ms (DAE).
+
