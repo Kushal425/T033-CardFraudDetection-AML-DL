@@ -1,0 +1,5 @@
+,model,d_in,val_pr_auc,test_pr_auc,val_recall@0.5%,test_recall@0.5%
+0,AE (base),31,0.22715,0.35737,0.66667,0.68
+1,AE (engineered),31,0.25349,0.37236,0.68421,0.76
+2,DAE (base),31,0.29351,0.48183,0.73684,0.77333
+3,DAE (engineered),31,0.56174,0.52126,0.7193,0.77333
