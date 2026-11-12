@@ -1,0 +1,140 @@
+% Section: Hybrid H1 Theory — Latent-Space Gaussian Mixture Density Modeling
+% Author: Apoorva Choudhary (Task P2_02)
+% IEEE Conference Paper Section - Card Fraud Triage (Phase 2)
+
+\section{Hybrid Theory: Latent-Space Gaussian Mixture Density Modeling}
+\label{sec:p2_hybrid_theory}
+
+Phase~1 demonstrated that parametric Gaussian Mixture Model (GMM) density estimation in the ambient transaction space ($d=31$) suffers from severe ill-conditioning, parameter proliferation ($6{,}335$ parameters at $K=12$), and sensitivity to heavy-tailed coordinates, whereas linear PCA reconstruction excelled by isolating off-subspace residuals. To combine non-linear manifold compression with explicit multimodal density estimation without the optimization instability of end-to-end joint training \cite{zong2018deep}, we formulate \textbf{Hybrid~1 ($H_1$, Latent-GMM)} as a two-stage decoupled density model on the learned autoencoder bottleneck.
+
+\subsection{Encoder Mapping and Latent Manifold Representation}
+\label{sec:p2_latent_mapping}
+Let $\mathbf{x} \in \mathbb{R}^d$ denote a standardized transaction vector fitted strictly on legitimate training records ($\mathcal{T}_{\text{train}} = \{\mathbf{x}_i \mid y_i = 0\}$), where $d=30$ for raw ULB inputs and $d=31$ for our Phase~1/2 \texttt{base} and \texttt{engineered} feature representations. Given a trained undercomplete (or denoising) autoencoder \cite{hinton2006reducing, sakurada2014anomaly} consisting of an encoder $f_{\boldsymbol{\theta}}: \mathbb{R}^d \to \mathbb{R}^k$ and decoder $g_{\boldsymbol{\phi}}: \mathbb{R}^k \to \mathbb{R}^d$ with bottleneck dimensionality $k \ll d$ (e.g., $k=8$), every transaction is deterministically projected into a compact latent representation:
+\begin{equation}
+    \mathbf{z} = f_{\boldsymbol{\theta}}(\mathbf{x}) \in \mathbb{R}^k, \qquad \hat{\mathbf{x}} = g_{\boldsymbol{\phi}}(\mathbf{z}) \in \mathbb{R}^d.
+    \label{eq:latent_map}
+\end{equation}
+Crucially, encoder parameters $\boldsymbol{\theta}$ are learned solely on legitimate training transactions $\mathcal{T}_{\text{train}}$ and frozen prior to density estimation. Because $f_{\boldsymbol{\theta}}$ collapses uninformative ambient noise while concentrating normal spending modes along non-linear coordinates, the empirical latent set $\mathcal{Z}_{\text{train,legit}} = \{f_{\boldsymbol{\theta}}(\mathbf{x}_i) \mid \mathbf{x}_i \in \mathcal{T}_{\text{train}}\}$ inhabits a lower-dimensional, smoother support than the ambient space $\mathbb{R}^d$.
+
+\subsection{Latent Gaussian Mixture Density and EM Estimation}
+\label{sec:p2_latent_em}
+Within the frozen bottleneck space $\mathbb{R}^k$, we model the distribution of legitimate latent codes as a $K$-component Gaussian Mixture Model \cite{bishop2006pattern, mclachlan2000finite}:
+\begin{equation}
+    p_Z(\mathbf{z} \mid \boldsymbol{\psi}) = \sum_{j=1}^K \pi_j \, \mathcal{N}(\mathbf{z} \mid \boldsymbol{\mu}_j, \boldsymbol{\Sigma}_j),
+    \quad \sum_{j=1}^K \pi_j = 1, \; \pi_j \ge 0,
+    \label{eq:latent_gmm_density}
+\end{equation}
+where $\boldsymbol{\psi} = \{\pi_j, \boldsymbol{\mu}_j, \boldsymbol{\Sigma}_j\}_{j=1}^K$ are parameters on $\mathbb{R}^k$ and
+\begin{equation}
+    \mathcal{N}(\mathbf{z} \mid \boldsymbol{\mu}_j, \boldsymbol{\Sigma}_j) =
+    \frac{\exp\!\left(-\frac{1}{2}(\mathbf{z} - \boldsymbol{\mu}_j)^\top \boldsymbol{\Sigma}_j^{-1} (\mathbf{z} - \boldsymbol{\mu}_j)\right)}{(2\pi)^{k/2} |\boldsymbol{\Sigma}_j|^{1/2}}.
+    \label{eq:latent_gaussian}
+\end{equation}
+
+Fitting $\boldsymbol{\psi}$ exclusively on $\mathcal{Z}_{\text{train,legit}}$ via Expectation-Maximization (EM) \cite{dempster1977maximum} introduces discrete latent cluster indicators $c_{nj} \in \{0,1\}$ and alternates until log-likelihood convergence:
+\begin{itemize}
+    \item \textbf{E-Step (Posterior Responsibilities):} Given current estimates $\boldsymbol{\psi}^{(t)}$, compute the responsibility of component $j$ for latent vector $\mathbf{z}_n = f_{\boldsymbol{\theta}}(\mathbf{x}_n)$:
+    \begin{equation}
+        \gamma_{nj}^{(t)} = P(c_{nj}=1 \mid \mathbf{z}_n, \boldsymbol{\psi}^{(t)})
+        = \frac{\pi_j^{(t)} \mathcal{N}(\mathbf{z}_n \mid \boldsymbol{\mu}_j^{(t)}, \boldsymbol{\Sigma}_j^{(t)})}{\sum_{m=1}^K \pi_m^{(t)} \mathcal{N}(\mathbf{z}_n \mid \boldsymbol{\mu}_m^{(t)}, \boldsymbol{\Sigma}_m^{(t)})}.
+        \label{eq:latent_resp}
+    \end{equation}
+    \item \textbf{M-Step (Closed-Form Updates):} Let $N_j = \sum_{n=1}^{N} \gamma_{nj}^{(t)}$ denote the effective sample mass assigned to cluster $j$ across $N = |\mathcal{T}_{\text{train}}|$ legitimate training vectors:
+    \begin{align}
+        \pi_j^{(t+1)} &= \frac{N_j}{N}, \qquad
+        \boldsymbol{\mu}_j^{(t+1)} = \frac{1}{N_j} \sum_{n=1}^{N} \gamma_{nj}^{(t)} \mathbf{z}_n, \label{eq:latent_m1} \\
+        \boldsymbol{\Sigma}_j^{(t+1)} &= \frac{1}{N_j} \sum_{n=1}^{N} \gamma_{nj}^{(t)} (\mathbf{z}_n - \boldsymbol{\mu}_j^{(t+1)})(\mathbf{z}_n - \boldsymbol{\mu}_j^{(t+1)})^\top + \epsilon_{\text{cov}} \mathbf{I}_k. \label{eq:latent_m2}
+    \end{align}
+\end{itemize}
+By Jensen's inequality on the Evidence Lower Bound (ELBO), each EM iteration guarantees $\ln p_Z(\mathcal{Z}_{\text{train,legit}} \mid \boldsymbol{\psi}^{(t+1)}) \ge \ln p_Z(\mathcal{Z}_{\text{train,legit}} \mid \boldsymbol{\psi}^{(t)})$, converging monotonically to a local stationary point; multi-start $k$-means initialization (\texttt{n\_init}) mitigates suboptimal local optima.
+
+\subsection{Change-of-Variables Caveat: Latent Density $\neq$ Data Density}
+\label{sec:p2_change_of_variables}
+A critical theoretical distinction must be stated explicitly: \textbf{the latent density $p_Z(f_{\boldsymbol{\theta}}(\mathbf{x}))$ is not the ambient input density $p_X(\mathbf{x})$}.
+For an invertible, continuously differentiable bijection $h: \mathbb{R}^d \to \mathbb{R}^d$ between spaces of equal dimension, the change-of-variables theorem \cite{rezende2015variational} relates densities via the Jacobian determinant:
+\begin{equation}
+    p_X(\mathbf{x}) = p_Z(h(\mathbf{x})) \left| \det \frac{\partial h(\mathbf{x})}{\partial \mathbf{x}^\top} \right|.
+    \label{eq:cov_bijection}
+\end{equation}
+In an undercomplete autoencoder, however, $f_{\boldsymbol{\theta}}: \mathbb{R}^d \to \mathbb{R}^k$ has $k < d$:
+\begin{enumerate}
+    \item \textbf{Non-Invertible Many-to-One Compression:} Because $f_{\boldsymbol{\theta}}$ projects a $d$-dimensional neighborhood onto a $k$-dimensional bottleneck, it is non-bijective and lacks a square invertible Jacobian $\partial \mathbf{z}/\partial \mathbf{x}^\top$. Distinct off-manifold points sharing the same projection satisfy $f_{\boldsymbol{\theta}}(\mathbf{x}_1) = f_{\boldsymbol{\theta}}(\mathbf{x}_2)$ despite differing ambient densities.
+    \item \textbf{Non-Volume-Preserving Decoder Geometry:} Even restricted to the reconstructed $k$-dimensional manifold $\mathcal{M} = g_{\boldsymbol{\phi}}(\mathbb{R}^k)$, the pushforward surface density depends on the Riemannian metric tensor $\mathbf{G}(\mathbf{z}) = \mathbf{J}_{g_{\boldsymbol{\phi}}}(\mathbf{z})^\top \mathbf{J}_{g_{\boldsymbol{\phi}}}(\mathbf{z}) \in \mathbb{R}^{k \times k}$ via:
+    \begin{equation}
+        p_{\mathcal{M}}(g_{\boldsymbol{\phi}}(\mathbf{z})) = \frac{p_Z(\mathbf{z})}{\sqrt{\det\!\left(\mathbf{J}_{g_{\boldsymbol{\phi}}}(\mathbf{z})^\top \mathbf{J}_{g_{\boldsymbol{\phi}}}(\mathbf{z})\right)}}.
+        \label{eq:riemannian_volume}
+    \end{equation}
+    Because standard MSE autoencoders impose no volume-preserving constraint on $g_{\boldsymbol{\phi}}$, the local stretching factor $\sqrt{\det \mathbf{G}(\mathbf{z})}$ varies non-uniformly across $\mathbb{R}^k$.
+\end{enumerate}
+Accordingly, $-\ln p_Z(f_{\boldsymbol{\theta}}(\mathbf{x}))$ must be interpreted strictly as an \textbf{unnormalized anomaly score} on the bottleneck coordinates rather than an exact data-space negative log-likelihood.
+
+\subsection{Curse of Dimensionality and Covariance Parameter Complexity}
+\label{sec:p2_param_complexity}
+For a $k$-dimensional GMM with $K$ components, the exact number of free parameters $p$ depends on the covariance topology:
+\begin{align}
+    p_{\text{full}}      &= K k + \tfrac{1}{2} K k(k+1) + (K - 1), \label{eq:p_full} \\
+    p_{\text{tied}}      &= K k + \tfrac{1}{2} k(k+1) + (K - 1),   \label{eq:p_tied} \\
+    p_{\text{diag}}      &= 2 K k + (K - 1),                       \label{eq:p_diag} \\
+    p_{\text{spherical}} &= K(k + 2) - 1.                          \label{eq:p_sph}
+\end{align}
+In ambient transaction space ($d=30$ raw or $d=31$ \texttt{base}/\texttt{engineered}), full-covariance matrices scale quadratically as $\mathcal{O}(K d^2)$, requiring $5{,}951$ ($d=30$) or $6{,}335$ ($d=31$) parameters at $K=12$ (Table~\ref{tab:p2_gmm_param_counts}). Compressing to a $k=8$ bottleneck collapses full-covariance complexity to $539$ parameters at $K=12$—a \textbf{$90.9\%$ reduction vs.\ $d=30$} and \textbf{$91.5\%$ reduction vs.\ $d=31$}—dramatically lowering sample complexity per parameter and mitigating hyperspherical shell concentration \cite{aggarwal2017outlier}.
+
+\begin{table}[t]
+\centering
+\caption{Exact GMM Free Parameter Count $p$ Across Ambient ($d=30, 31$) vs.\ Latent ($k=8$) Spaces.}
+\label{tab:p2_gmm_param_counts}
+\footnotesize
+\begin{tabular}{llrrrr}
+\toprule
+\textbf{Topology} & \textbf{Dim.} & \textbf{$K=1$} & \textbf{$K=4$} & \textbf{$K=8$} & \textbf{$K=12$} \\
+\midrule
+Full      & $d=30$ (raw)       & $495$  & $1{,}983$ & $3{,}967$ & $5{,}951$ \\
+Full      & $d=31$ (base/eng.) & $527$  & $2{,}111$ & $4{,}223$ & $6{,}335$ \\
+\textbf{Full} & \textbf{$k=8$ (latent)} & $\mathbf{44}$ & $\mathbf{179}$ & $\mathbf{359}$ & $\mathbf{539}$ \\
+\midrule
+Tied      & $d=31$ (base/eng.) & $527$  & $623$     & $751$     & $879$     \\
+Tied      & $k=8$ (latent)     & $44$   & $71$      & $107$     & $143$     \\
+Diag      & $d=31$ (base/eng.) & $62$   & $251$     & $503$     & $755$     \\
+Diag      & $k=8$ (latent)     & $16$   & $67$      & $135$     & $203$     \\
+Spherical & $k=8$ (latent)     & $9$    & $39$      & $79$      & $119$     \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Regularization, Numerical Stability, and Model Instability}
+\label{sec:p2_stability}
+Unconstrained maximum-likelihood EM is ill-posed whenever a component collapses onto a collinear subset or small cluster ($|\boldsymbol{\Sigma}_j| \to 0$), causing likelihood $\to +\infty$. Adding ridge regularization $\boldsymbol{\Sigma}_j^{\text{reg}} = \boldsymbol{\Sigma}_j + \epsilon_{\text{cov}} \mathbf{I}_k$ (Equation~\ref{eq:latent_m2}) enforces a strict eigenvalue floor $\lambda_{\min}(\boldsymbol{\Sigma}_j^{\text{reg}}) \ge \epsilon_{\text{cov}}$, bounding the condition number:
+\begin{equation}
+    \kappa(\boldsymbol{\Sigma}_j^{\text{reg}}) = \frac{\lambda_{\max}(\boldsymbol{\Sigma}_j) + \epsilon_{\text{cov}}}{\lambda_{\min}(\boldsymbol{\Sigma}_j) + \epsilon_{\text{cov}}}.
+    \label{eq:cond_number}
+\end{equation}
+In floating-point inference, computing $\ln p_Z(\mathbf{z})$ directly via exponentiation risks underflow when $(\mathbf{z}-\boldsymbol{\mu}_j)^\top \boldsymbol{\Sigma}_j^{-1} (\mathbf{z}-\boldsymbol{\mu}_j) \gg 0$. We evaluate component log-densities using Cholesky factors $\boldsymbol{\Sigma}_j^{\text{reg}} = \mathbf{L}_j \mathbf{L}_j^\top$ and aggregate across clusters via the log-sum-exp identity:
+\begin{equation}
+    \ln p_Z(\mathbf{z}) = m(\mathbf{z}) + \ln \sum_{j=1}^K \exp\!\left( \ell_j(\mathbf{z}) - m(\mathbf{z}) \right),
+    \quad m(\mathbf{z}) = \max_j \ell_j(\mathbf{z}),
+    \label{eq:logsumexp}
+\end{equation}
+where $\ell_j(\mathbf{z}) = \ln \pi_j + \ln \mathcal{N}(\mathbf{z} \mid \boldsymbol{\mu}_j, \boldsymbol{\Sigma}_j^{\text{reg}})$. Reducing dimensionality ($31 \to k$) and saturating outliers through bounded/smooth encoder activations stabilizes $\kappa(\boldsymbol{\Sigma}_j)$, lowers sensitivity to $\epsilon_{\text{cov}}$, and reduces multi-seed EM variance compared to ambient-space GMMs.
+
+\subsection{Anomaly Scoring: Off-Manifold Distance vs.\ On-Manifold Density}
+\label{sec:p2_complementary_scoring}
+The $H_1$ anomaly score is defined as the negative latent log-density:
+\begin{equation}
+    s_{\text{H1}}(\mathbf{x}) = -\ln p_Z\big(f_{\boldsymbol{\theta}}(\mathbf{x}) \mid \hat{\boldsymbol{\psi}}\big),
+    \label{eq:h1_score}
+\end{equation}
+where larger values indicate lower density within the legitimate latent manifold and higher fraud suspicion. Critically, $s_{\text{H1}}(\mathbf{x})$ and reconstruction MSE $s_{\text{AE}}(\mathbf{x}) = \frac{1}{d}\|\mathbf{x} - g_{\boldsymbol{\phi}}(f_{\boldsymbol{\theta}}(\mathbf{x}))\|_2^2$ detect structurally distinct failure regimes:
+\begin{itemize}
+    \item \textbf{Off-Manifold Anomalies (Caught by AE, Potentially Missed by $H_1$):} Transactions violating the curved manifold equations satisfy $\mathbf{x} \notin \mathcal{M}$, yielding high $\|\mathbf{x} - \hat{\mathbf{x}}\|_2^2$. However, because $f_{\boldsymbol{\theta}}: \mathbb{R}^d \to \mathbb{R}^k$ has a $(d-k)$-dimensional fiber, an off-manifold fraud can undergo \emph{projection aliasing}—mapping onto a dense legitimate latent cluster $\mathbf{z} = f_{\boldsymbol{\theta}}(\mathbf{x})$ and receiving low $s_{\text{H1}}(\mathbf{x})$.
+    \item \textbf{On-Manifold Low-Density Anomalies (Caught by $H_1$, Missed by AE):} Conversely, an autoencoder that over-generalizes \cite{gong2019memorizing} reconstructs points lying inside or along extrapolations of $\mathcal{M}$ with small MSE ($s_{\text{AE}}(\mathbf{x}) \approx 0$). If such a transaction occupies a sparse extreme tail or low-density gap \emph{along} the latent coordinates $\mathbf{z}$, $s_{\text{H1}}(\mathbf{x})$ assigns a sharp Mahalanobis penalty via $(\mathbf{z}-\boldsymbol{\mu}_j)^\top \boldsymbol{\Sigma}_j^{-1}(\mathbf{z}-\boldsymbol{\mu}_j)$.
+\end{itemize}
+This orthogonality motivates both $H_1$ standalone investigation and the downstream hybrids $H_2$ (score fusion) and $H_3$ (DAGMM-lite on $[\mathbf{z}, \text{err}]$).
+
+\subsection{BIC on Latent Representations}
+\label{sec:p2_bic_latents}
+For a fixed trained encoder $f_{\boldsymbol{\theta}}$, we evaluate latent model complexity using the Akaike and Bayesian Information Criteria \cite{akaike1974new, schwarz1978estimating}:
+\begin{equation}
+    \text{BIC}_Z(K, \text{cov}) = p(K, k, \text{cov}) \ln N - 2 \sum_{n=1}^{N} \ln p_Z(\mathbf{z}_n \mid \hat{\boldsymbol{\psi}}).
+    \label{eq:latent_bic}
+\end{equation}
+Because $k$ and $f_{\boldsymbol{\theta}}$ remain fixed across candidate $(K, \text{cov})$ pairs, $\text{BIC}_Z$ consistently penalizes excess mixture parameters on the same latent probability space. However, \textbf{$\text{BIC}_Z$ cannot be directly compared across different bottleneck dimensions $k$ or differently trained encoders}: changing $k$ alters the ambient dimension and differential entropy scale of $\ln p_Z(\mathbf{z})$ (via $\frac{k}{2}\ln 2\pi$ and non-constant encoder Jacobians). Therefore, within a fixed $k$, we report both $\arg\min \text{BIC}_Z$ (purely unsupervised) and $\arg\max \text{PR-AUC}_{\text{val}}$ (validation-guided), while cross-dimensional ablations over $k \in \{2,4,8,16\}$ are selected strictly by validation PR-AUC without touching the test split.

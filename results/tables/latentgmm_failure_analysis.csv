@@ -1,0 +1,11 @@
+,missed_rank,row_index,latentgmm_nll,latentgmm_legit_pct,flagged_at_fpr_budget,latent_l2_norm,gmm_score,gmm_flagged,ae_score,ae_flagged,ae_dae_score,ae_dae_flagged,pca_score,pca_flagged
+0,1,48141,10.9694,29.07,False,11.7484,22.4635,False,0.1257,False,0.1823,False,0.0075,False
+1,2,43891,12.5732,45.45,False,15.435,49.5978,False,0.9446,False,1.0612,False,0.0078,False
+2,3,21803,12.7474,46.97,False,10.4526,11.6244,False,0.0925,False,0.1809,False,0.0003,False
+3,4,51535,13.3937,52.02,False,15.8543,39.9933,False,0.4363,False,0.7648,False,0.0221,False
+4,5,49008,13.9837,56.19,False,11.3,50.9167,False,0.2261,False,0.5296,False,0.1171,False
+5,6,33195,16.9955,72.56,False,8.4736,9.5984,False,0.1496,False,0.2679,False,0.0002,False
+6,7,20383,17.5265,75.21,False,10.9204,44.755,False,0.3758,False,0.8328,False,0.0509,False
+7,8,26702,20.0104,84.53,False,12.1891,50.573,False,0.4471,False,0.4741,False,0.0221,False
+8,9,45069,23.4283,91.16,False,16.1331,93.5297,True,0.832,False,1.0434,False,0.1248,False
+9,10,12108,24.1041,92.29,False,17.6272,21.4551,False,0.0437,False,0.6597,False,0.013,False

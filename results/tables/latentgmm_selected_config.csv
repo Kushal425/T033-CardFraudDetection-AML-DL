@@ -1,0 +1,2 @@
+,selection_criterion,latent_dim,covariance_type,n_components,reg_covar,free_parameters,grid_train_bic,grid_val_pr_auc,encoder_checkpoint,feature_set
+0,val_pr_auc,12,diag,12,0.01,299,1505118.9061537688,0.15099121087637285,ae_best.pt,base
