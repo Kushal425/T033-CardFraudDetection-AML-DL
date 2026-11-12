@@ -154,6 +154,20 @@ def discover_ae_checkpoints(models_dir: Path | None = None) -> list[Path]:
     return sorted(target_dir.glob("ae_*.pt"))
 
 
+def discover_ablation_checkpoints(models_dir: Path | None = None) -> dict[int, Path]:
+    """Discover Vani's latent-dim ablation checkpoints (``ae_latent_k<k>.pt``)."""
+    target_dir = models_dir or (_ROOT / CFG["paths"]["models"])
+    if not target_dir.exists():
+        return {}
+    found: dict[int, Path] = {}
+    for path in sorted(target_dir.glob("ae_latent_k*.pt")):
+        stem = path.stem  # e.g. ae_latent_k8
+        suffix = stem.replace("ae_latent_k", "")
+        if suffix.isdigit():
+            found[int(suffix)] = path
+    return dict(sorted(found.items()))
+
+
 def check_ae_dependencies(
     checkpoint_path: Path | None = None,
     models_dir: Path | None = None,
@@ -950,6 +964,71 @@ def analyze_latent_gaussianity(
     return pd.DataFrame(rows)
 
 
+def summarize_gaussianity(gauss_df: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate per-coordinate normality diagnostics by space (ambient vs. latent)."""
+    return (
+        gauss_df.groupby("space", as_index=False)
+        .agg(
+            n_coords=("coordinate", "count"),
+            mean_abs_skew=("abs_skew", "mean"),
+            median_abs_skew=("abs_skew", "median"),
+            max_abs_skew=("abs_skew", "max"),
+            mean_abs_kurtosis=("abs_kurtosis", "mean"),
+            median_abs_kurtosis=("abs_kurtosis", "median"),
+            max_abs_kurtosis=("abs_kurtosis", "max"),
+            pct_mildly_gaussian=("mildly_gaussian", lambda s: float(np.mean(s) * 100.0)),
+            mean_shapiro_w=("shapiro_w", "mean"),
+        )
+    )
+
+
+def compute_complementarity_summary(
+    y_split: np.ndarray,
+    s_latent: np.ndarray,
+    parent_scores: Mapping[str, np.ndarray],
+    fpr_budgets: Sequence[float] = (0.001, 0.005, 0.01),
+) -> pd.DataFrame:
+    """
+    Quantify alert complementarity (H1-only, parent-only, both, missed-by-both)
+    among true fraud cases at fixed FPR operating budgets.
+    """
+    y_arr = np.asarray(y_split, dtype=np.int32)
+    s_h1 = np.asarray(s_latent, dtype=np.float64)
+    fraud_mask = y_arr == 1
+    legit_mask = y_arr == 0
+    n_fraud = int(fraud_mask.sum())
+    if n_fraud == 0:
+        return pd.DataFrame()
+
+    rows = []
+    for fpr in fpr_budgets:
+        th_h1 = float(np.quantile(s_h1[legit_mask], 1.0 - fpr))
+        caught_h1 = (s_h1 >= th_h1) & fraud_mask
+        for name, p_scores in parent_scores.items():
+            s_p = np.asarray(p_scores, dtype=np.float64)
+            th_p = float(np.quantile(s_p[legit_mask], 1.0 - fpr))
+            caught_p = (s_p >= th_p) & fraud_mask
+            both = int((caught_h1 & caught_p).sum())
+            h1_only = int((caught_h1 & ~caught_p).sum())
+            parent_only = int((~caught_h1 & caught_p).sum())
+            neither = int((~caught_h1 & ~caught_p & fraud_mask).sum())
+            rows.append(
+                {
+                    "parent_model": name,
+                    "fpr_budget": float(fpr),
+                    "n_fraud": n_fraud,
+                    "h1_caught": int(caught_h1.sum()),
+                    "parent_caught": int(caught_p.sum()),
+                    "both_caught": both,
+                    "h1_only_caught": h1_only,
+                    "parent_only_caught": parent_only,
+                    "missed_by_both": neither,
+                    "union_recall": float((both + h1_only + parent_only) / n_fraud),
+                }
+            )
+    return pd.DataFrame(rows)
+
+
 def analyze_latentgmm_failures(
     y_split: np.ndarray,
     s_latent: np.ndarray,
@@ -1361,23 +1440,23 @@ def _load_available_parent_scores() -> dict[str, dict[str, np.ndarray]]:
     return parents
 
 
-def run_latent_gmm_stage(
+def run_day2_stage(
     feature_set: str = "base",
     checkpoint_path: Path | None = None,
-    ablation_checkpoints: Mapping[int, Path] | None = None,
     selection_criterion: str = "val_pr_auc",
     n_boot: int = 1000,
 ) -> dict[str, Any]:
     """
-    Execute the complete H1 Latent-GMM pipeline against Vani's trained AE.
-
-    Fails immediately with :class:`WaitingForInputsError` if Vani's
-    ``src/autoencoder.py`` or ``results/models/ae_*.pt`` weights are absent.
+    Execute Day 2 H1 Latent-GMM experiments:
+    - Task A: Encode via Vani's chosen AE, grid search cov x K x reg, select on val,
+      refit on all train-legit codes, save ``hybrid_latentgmm_{val,test}.npy``,
+      evaluate metrics, and run paired bootstrap comparison vs. parents.
+    - Task B (i)-(iii): Parameter counts, reg_covar/condition-number sensitivity,
+      and 5-seed initialization variance (ambient vs. latent).
     """
     seed = int(CFG.get("seed", 42))
     set_seed(seed)
 
-    # Strict upstream dependency gate (fails with 'waiting for inputs' if absent)
     encoder, encoder_meta = load_vani_encoder(checkpoint_path=checkpoint_path)
     _logger.info("Loaded Vani encoder: %s", encoder_meta)
 
@@ -1389,11 +1468,12 @@ def run_latent_gmm_stage(
         encoder_id=Path(encoder_meta["checkpoint_path"]).stem,
     )
 
-    # Task A: Grid search, selection (val-only), final refit, scores & parent comparison
     grid_df = run_latent_gmm_grid_search(latent_splits, seed=seed)
     save_table(grid_df, "latentgmm_grid_search")
 
     chosen_cfg, sel_df = select_latent_gmm_config(grid_df, selection_criterion=selection_criterion)
+    chosen_cfg["encoder_checkpoint"] = Path(encoder_meta["checkpoint_path"]).name
+    chosen_cfg["feature_set"] = feature_set
     save_table(sel_df, "latentgmm_selection_comparison")
     save_table(pd.DataFrame([chosen_cfg]), "latentgmm_selected_config")
 
@@ -1431,7 +1511,7 @@ def run_latent_gmm_stage(
     save_table(ci_df, "latentgmm_parent_comparison")
     save_table(paired_df, "latentgmm_paired_bootstrap")
 
-    # Task B: Evidence (i)-(v)
+    # Task B Evidence (i)-(iii)
     param_df = compute_parameter_count_comparison(
         ambient_dims=(30, splits.X_train_legit.shape[1]),
         latent_dims=sorted({2, 4, 8, 16, latent_splits.latent_dim}),
@@ -1455,9 +1535,53 @@ def run_latent_gmm_stage(
         splits.y_val,
         latent_splits.Z_train_legit,
         latent_splits.Z_val,
+        ambient_cfg={"covariance_type": "full", "n_components": 12, "reg_covar": 1e-2},
         latent_cfg=chosen_cfg,
     )
     save_table(seed_df, "latentgmm_seed_stability")
+
+    save_fig(plot_latent_aic_bic(grid_df, default_reg=chosen_cfg["reg_covar"]), "latentgmm_aic_bic")
+    save_fig(plot_latent_nll_distribution(latent_splits.y_val, s_val, latent_splits.y_test, s_test), "latentgmm_nll_distribution")
+    save_fig(plot_latent_stability_evidence(reg_df, seed_df), "latentgmm_stability_comparison")
+    plt.close("all")
+
+    return {
+        "chosen_cfg": chosen_cfg,
+        "metrics_df": metrics_df,
+        "ci_df": ci_df,
+        "paired_df": paired_df,
+        "latent_splits": latent_splits,
+        "s_val": s_val,
+        "s_test": s_test,
+    }
+
+
+def run_day3_stage(
+    feature_set: str = "base",
+    checkpoint_path: Path | None = None,
+    ablation_checkpoints: Mapping[int, Path] | None = None,
+) -> dict[str, Any]:
+    """
+    Execute Day 3 H1 Latent-GMM experiments:
+    - Task B (iv)-(v): Latent vs. ambient Gaussianity, QQ/2D projection plots,
+      honest failure analysis, and alert complementarity vs. parent models.
+    - Task C: Multi-dim (2/4/8/12/16) x cov-type x K ablation across 3 seeds.
+    """
+    seed = int(CFG.get("seed", 42))
+    set_seed(seed)
+
+    encoder, encoder_meta = load_vani_encoder(checkpoint_path=checkpoint_path)
+    splits = get_features(feature_set=feature_set)
+    latent_splits = encode_splits(
+        encoder,
+        splits,
+        feature_set=feature_set,
+        encoder_id=Path(encoder_meta["checkpoint_path"]).stem,
+    )
+
+    s_val = load_scores("hybrid_latentgmm", "val")
+    s_test = load_scores("hybrid_latentgmm", "test")
+    parents = _load_available_parent_scores()
 
     gauss_df = analyze_latent_gaussianity(
         splits.X_train_legit,
@@ -1466,8 +1590,10 @@ def run_latent_gmm_stage(
         seed=seed,
     )
     save_table(gauss_df, "latentgmm_gaussianity")
+    save_table(summarize_gaussianity(gauss_df), "latentgmm_gaussianity_summary")
 
     val_parent_scores = {k: v["val"] for k, v in parents.items()}
+    test_parent_scores = {k: v["test"] for k, v in parents.items()}
     fail_df = analyze_latentgmm_failures(
         latent_splits.y_val,
         s_val,
@@ -1476,38 +1602,69 @@ def run_latent_gmm_stage(
     )
     save_table(fail_df, "latentgmm_failure_analysis")
 
-    # Figures
-    save_fig(plot_latent_aic_bic(grid_df, default_reg=chosen_cfg["reg_covar"]), "latentgmm_aic_bic")
-    save_fig(plot_latent_nll_distribution(latent_splits.y_val, s_val, latent_splits.y_test, s_test), "latentgmm_nll_distribution")
-    save_fig(plot_latent_stability_evidence(reg_df, seed_df), "latentgmm_stability_comparison")
+    comp_val = compute_complementarity_summary(latent_splits.y_val, s_val, val_parent_scores)
+    comp_val["split"] = "val"
+    comp_test = compute_complementarity_summary(latent_splits.y_test, s_test, test_parent_scores)
+    comp_test["split"] = "test"
+    save_table(pd.concat([comp_val, comp_test], ignore_index=True), "latentgmm_complementarity")
+
     save_fig(plot_latent_qq(latent_splits.Z_train_legit), "latentgmm_qq_plots")
     save_fig(plot_latent_2d_projection(latent_splits.Z_val, latent_splits.y_val, seed=seed), "latentgmm_2d_projection")
     plt.close("all")
 
-    # Task C: Multi-dim GMM ablations (if additional latent-dim checkpoints supplied)
     ablation_map: dict[int, LatentSplits] = {latent_splits.latent_dim: latent_splits}
-    if ablation_checkpoints:
-        for d_lat, ckpt in ablation_checkpoints.items():
-            if d_lat in ablation_map:
-                continue
-            enc_d, _ = load_vani_encoder(checkpoint_path=ckpt)
-            ablation_map[d_lat] = encode_splits(
-                enc_d,
-                splits,
-                feature_set=feature_set,
-                encoder_id=ckpt.stem,
-            )
+    ckpt_map = dict(ablation_checkpoints) if ablation_checkpoints is not None else discover_ablation_checkpoints()
+    for d_lat, ckpt in ckpt_map.items():
+        if d_lat in ablation_map:
+            continue
+        enc_d, _ = load_vani_encoder(checkpoint_path=ckpt)
+        ablation_map[d_lat] = encode_splits(
+            enc_d,
+            splits,
+            feature_set=feature_set,
+            encoder_id=ckpt.stem,
+        )
 
     runs_df, summary_df = run_gmm_ablation(ablation_map)
     save_table(runs_df, "ablation_gmm_runs")
     save_table(summary_df, "ablation_gmm_summary")
 
     return {
-        "chosen_cfg": chosen_cfg,
-        "metrics_df": metrics_df,
-        "ci_df": ci_df,
-        "paired_df": paired_df,
+        "gauss_summary": summarize_gaussianity(gauss_df),
         "ablation_summary": summary_df,
+    }
+
+
+def run_latent_gmm_stage(
+    feature_set: str = "base",
+    checkpoint_path: Path | None = None,
+    ablation_checkpoints: Mapping[int, Path] | None = None,
+    selection_criterion: str = "val_pr_auc",
+    n_boot: int = 1000,
+) -> dict[str, Any]:
+    """
+    Execute the complete H1 Latent-GMM pipeline (Day 2 + Day 3 stages).
+
+    Fails immediately with :class:`WaitingForInputsError` if Vani's
+    ``src/autoencoder.py`` or ``results/models/ae_*.pt`` weights are absent.
+    """
+    day2 = run_day2_stage(
+        feature_set=feature_set,
+        checkpoint_path=checkpoint_path,
+        selection_criterion=selection_criterion,
+        n_boot=n_boot,
+    )
+    day3 = run_day3_stage(
+        feature_set=feature_set,
+        checkpoint_path=checkpoint_path,
+        ablation_checkpoints=ablation_checkpoints,
+    )
+    return {
+        "chosen_cfg": day2["chosen_cfg"],
+        "metrics_df": day2["metrics_df"],
+        "ci_df": day2["ci_df"],
+        "paired_df": day2["paired_df"],
+        "ablation_summary": day3["ablation_summary"],
     }
 
 
@@ -1525,6 +1682,12 @@ def _parse_args() -> argparse.Namespace:
         help="Optional explicit path to Vani's trained AE checkpoint (.pt).",
     )
     parser.add_argument(
+        "--stage",
+        choices=("all", "day2", "day3"),
+        default="all",
+        help="Which experimental stage to execute (default: all).",
+    )
+    parser.add_argument(
         "--stub-test",
         action="store_true",
         help="Run in-memory synthetic stub verification (writes nothing to results/).",
@@ -1538,7 +1701,12 @@ if __name__ == "__main__":
         run_synthetic_stub_self_test()
     else:
         try:
-            run_latent_gmm_stage(feature_set=args.feature_set, checkpoint_path=args.checkpoint)
+            if args.stage == "day2":
+                run_day2_stage(feature_set=args.feature_set, checkpoint_path=args.checkpoint)
+            elif args.stage == "day3":
+                run_day3_stage(feature_set=args.feature_set, checkpoint_path=args.checkpoint)
+            else:
+                run_latent_gmm_stage(feature_set=args.feature_set, checkpoint_path=args.checkpoint)
         except WaitingForInputsError as exc:
             _logger.error("%s", exc)
             sys.exit(2)

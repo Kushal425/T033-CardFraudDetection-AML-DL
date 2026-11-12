@@ -25,8 +25,10 @@ from src.hybrid_latent_gmm import (
     analyze_latentgmm_failures,
     check_ae_dependencies,
     compare_with_parents,
+    compute_complementarity_summary,
     compute_latent_nll,
     compute_parameter_count_comparison,
+    discover_ablation_checkpoints,
     encode_matrix,
     encode_splits,
     fit_latent_gmm,
@@ -37,6 +39,7 @@ from src.hybrid_latent_gmm import (
     run_seed_stability_comparison,
     run_synthetic_stub_self_test,
     select_latent_gmm_config,
+    summarize_gaussianity,
 )
 from src.metrics import pr_auc
 
@@ -278,4 +281,56 @@ def test_synthetic_stub_self_test_writes_nothing_to_results():
 
     assert before == after
     assert out["test_pr_auc"] > 0.5
+
+
+def test_gaussianity_summary_and_complementarity_helpers():
+    """Verify summary helpers for Gaussianity and alert complementarity."""
+    splits = _make_synthetic_splits(d_in=31)
+    enc8 = _TorchStubAE(d_in=31, latent_dim=8, seed=42)
+    ls8 = encode_splits(enc8, splits, batch_size=256, device="cpu")
+
+    gauss_df = analyze_latent_gaussianity(splits.X_train_legit, ls8.Z_train_legit, feature_names=splits.feature_names)
+    summary_df = summarize_gaussianity(gauss_df)
+    assert len(summary_df) == 2
+    assert set(summary_df["space"]) == {"ambient_d31", "latent_d8"}
+
+    gmm = fit_latent_gmm(ls8.Z_train_legit, n_components=2, covariance_type="full", reg_covar=1e-4, random_state=42)
+    s_val = compute_latent_nll(gmm, ls8.Z_val)
+    comp_df = compute_complementarity_summary(ls8.y_val, s_val, {"ae_stub": s_val * 0.9})
+    assert len(comp_df) == 3
+    assert (comp_df["h1_caught"] + comp_df["parent_only_caught"] + comp_df["missed_by_both"] == 20).all()
+
+
+def test_vani_checkpoints_and_saved_hybrid_scores():
+    """Verify Vani's AE checkpoints load cleanly and saved H1 scores meet the contract."""
+    root = get_repo_root()
+    ae_ckpt = root / "results/models/ae_best.pt"
+    if not ae_ckpt.exists():
+        pytest.skip("Vani's ae_best.pt not present.")
+
+    enc, meta = load_vani_encoder(ae_ckpt)
+    assert hasattr(enc, "encode")
+    assert enc.latent_dim == 12
+    assert "ae_best.pt" in meta["checkpoint_path"]
+
+    ablation_ckpts = discover_ablation_checkpoints()
+    assert set([2, 4, 8, 16]).issubset(ablation_ckpts.keys())
+
+    val_path = root / "results/scores/hybrid_latentgmm_val.npy"
+    test_path = root / "results/scores/hybrid_latentgmm_test.npy"
+    if not (val_path.exists() and test_path.exists()):
+        pytest.skip("Day 2 H1 score files not yet generated.")
+
+    import pandas as pd
+
+    y_val = pd.read_csv(root / "data/processed/val.csv", index_col=0)["Class"].values
+    y_test = pd.read_csv(root / "data/processed/test.csv", index_col=0)["Class"].values
+    s_val = np.load(val_path)
+    s_test = np.load(test_path)
+
+    assert s_val.dtype == np.float32 and s_val.shape == (len(y_val),)
+    assert s_test.dtype == np.float32 and s_test.shape == (len(y_test),)
+    assert np.isfinite(s_val).all() and np.isfinite(s_test).all()
+    assert pr_auc(y_test, s_test) > float(y_test.mean())
+    assert float(s_test[y_test == 1].mean()) > float(s_test[y_test == 0].mean())
 
