@@ -117,3 +117,4 @@ def test_saved_hybrid_fusion_score_contracts():
     assert not np.isnan(s_test).any()
     assert not np.isinf(s_val).any()
     assert not np.isinf(s_test).any()
+

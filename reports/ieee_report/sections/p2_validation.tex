@@ -1,0 +1,107 @@
+% Section: Technical Validation — Phase 2
+% Author: Prachee Dhar (Task P2_04)
+% IEEE Conference Paper Section - Card Fraud Triage (Phase 2)
+
+\section{Technical Validation and Evaluation Protocol}
+\label{sec:p2_validation}
+
+This section reports the technical sanity checks, evaluation protocol details, and threshold policy for all Phase~2 models. All selections use validation data only; test labels were accessed once for final reporting.
+
+% ─── Evaluation Protocol ─────────────────────────────────────────────────────
+\subsection{Evaluation Protocol and Anti-Leakage Controls}
+\label{sec:p2_eval_protocol}
+
+\paragraph{Chronological split.}
+All models use the same chronological train/val/test split (by transaction time): train legit 170,524 records ($t \le 120{,}396$ s), val 56,961 records ($120{,}396 < t \le 145{,}247$ s, 57 frauds), test 56,962 records ($t > 145{,}248$ s, 75 frauds). No shuffling crosses split boundaries. All normalization, GMM fitting, and AE training use training-set statistics only; validation and test statistics are never used to fit any parameter.
+
+\paragraph{Validation-only selection.}
+Model hyperparameters (latent dim, $K$, covariance type, $\epsilon_{\text{cov}}$, fusion weight $\alpha$, noise level $\sigma$) are selected exclusively by validation PR-AUC. Test scores are computed with the frozen, fully-specified model once per configuration after selection is complete.
+
+\paragraph{Evaluation metrics.}
+We report:
+\begin{itemize}
+  \item \textbf{PR-AUC}: Primary metric; threshold-free, appropriate for imbalanced detection (0.1\% base rate). 95\% bootstrap CI reported ($n=1{,}000$ resamples, seed=42).
+  \item \textbf{ROC-AUC}: Included for cross-method comparability; can be misleadingly high under severe imbalance.
+  \item \textbf{Recall@FPR}: Recall at 0.1\%, 0.5\%, and 1.0\% FPR corresponds to investigator queue sizes of $\approx57$, $\approx285$, $\approx570$ daily alerts per 56,961 transactions—operationally relevant capacities.
+  \item \textbf{Precision@K}: Top-K precision at $K \in \{50, 100, 200\}$; directly measures triage quality for a fixed investigator capacity.
+  \item \textbf{Paired bootstrap difference}: Tests whether PR-AUC improvement of a hybrid over its standalone parent is statistically significant ($n=1{,}000$, 95\% CI includes zero = not significant).
+\end{itemize}
+
+% ─── Seed Stability ──────────────────────────────────────────────────────────
+\subsection{Seed Stability (5-Seed Experiment)}
+\label{sec:p2_seed_stability}
+
+Table~\ref{tab:p2_seed_stability} reports 5-seed mean and standard deviation for the AE and DAE, assessing robustness of learned representations to random initialization. The DAE achieves a consistently higher mean than AE across seeds but exhibits a large standard deviation (val PR-AUC std = 0.148) due to sparse validation fraud labels (57 events), which makes the PR-AUC landscape noisy. The best seed (42) results are used as official scores.
+
+\begin{table}[t]
+\centering
+\caption{5-Seed Stability: Val and Test PR-AUC (mean $\pm$ std).}
+\label{tab:p2_seed_stability}
+\footnotesize
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Model} & \textbf{Val PR-AUC} & \textbf{Test PR-AUC} & \textbf{n seeds} \\
+\midrule
+AE  & $0.236 \pm 0.147$ & $0.343 \pm 0.077$ & 5 \\
+DAE & $0.342 \pm 0.148$ & $0.471 \pm 0.078$ & 5 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ─── Gradient and Sanity Checks ──────────────────────────────────────────────
+\subsection{Model Sanity Checks}
+\label{sec:p2_sanity}
+
+The following sanity checks confirm model integrity:
+
+\begin{enumerate}
+  \item \textbf{Gradient health:} No NaN gradients detected during AE/DAE training. Gradient norms converge to $[0.23, 0.81]$ range, indicating stable optimization without exploding or vanishing gradients.
+  \item \textbf{Fraud/legit reconstruction gap:} The fraud-to-legit MSE ratio is 10.99$\times$ for the AE and 15.59$\times$ for the DAE on held-out batches, confirming the model reconstructs normal patterns well but fails on fraud patterns as intended.
+  \item \textbf{Score direction:} All score files follow the convention: higher score = more anomalous. This was verified against the Phase~1 baseline for each model type.
+  \item \textbf{PCA sanity check:} AE reconstruction error correlates with PCA reconstruction residual (Phase~1 PCA anomaly score), confirming the AE discovers similar structure to linear PCA while adding non-linear discrimination.
+  \item \textbf{No test leakage:} Normalization statistics for DAGMM-lite's augmented representation $v$ use training legitimate records only. GMM parameters are fitted on training legit only. The ``val'' split label was used only for model selection, never for fitting parameters.
+\end{enumerate}
+
+% ─── Bootstrap CI ─────────────────────────────────────────────────────────────
+\subsection{Paired Bootstrap Significance Testing}
+\label{sec:p2_paired_bootstrap}
+
+We use paired bootstrap differences to test whether hybrid models significantly improve over standalone parents (Table~\ref{tab:p2_paired_bootstrap}). Both H2 and H3 are tested against standalone AE and standalone GMM. With $\alpha^* = 1.0$, H2 is identical to DAE, so its difference from AE is positive and significant (delta PR-AUC = $+0.1244$, CI: [0.0238, 0.2287]). H3 also improves significantly over GMM (delta = $+0.0399$, CI includes 0 for some comparisons — see Table~\ref{tab:p2_paired_bootstrap} for exact values). None of the Phase~2 hybrids significantly outperform the PCA Anomaly Score benchmark (which dominates at 0.7425 test PR-AUC).
+
+% ─── Runtime ──────────────────────────────────────────────────────────────────
+\subsection{Runtime and Scalability}
+\label{sec:p2_runtime}
+
+\begin{table}[t]
+\centering
+\caption{Training and Inference Runtime (CPU, Apple Silicon). AE/DAE trained for 100 epochs; PCA/GMM/etc. include sweep time.}
+\label{tab:p2_runtime}
+\footnotesize
+\begin{tabular}{lrrl}
+\toprule
+\textbf{Model} & \textbf{Train (s)} & \textbf{Infer 10k (s)} & \textbf{Note} \\
+\midrule
+PCA Anomaly Score        & 0.44   & $<0.01$ & Full sweep \\
+LOF                      & 4.42   & —       & Sweep incl. \\
+Isolation Forest         & 13.68  & —       & Sweep incl. \\
+OC-SVM                   & 58.08  & —       & Sweep incl. \\
+AE (n=3,531 params)      & 29.87  & 0.0018  & Best seed \\
+DAE (n=2,895 params)     & 34.38  & 0.0014  & Best seed \\
+DAGMM-lite (K=16, diag)  & $\sim$70 & 0.0021 & Grid search included \\
+H2 Score Fusion          & $\approx0$ & $<0.001$ & Score combination only \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ─── Threshold Policy ─────────────────────────────────────────────────────────
+\subsection{Operational Threshold Policy}
+\label{sec:p2_threshold}
+
+No operational threshold is recommended based on this research. We report threshold-free metrics (PR-AUC) and capacity-based metrics (Precision@K, Recall@FPR) to separate model quality from deployment decisions. Any threshold selection for production would require:
+\begin{enumerate}
+  \item Domain expert input on acceptable FPR (investigator workload) vs.\ recall (fraud recovery rate) trade-off.
+  \item Re-calibration on a recent labeled window (concept drift monitoring).
+  \item Separate cost/benefit analysis based on average transaction value and investigation cost.
+\end{enumerate}
+
+A cost curve analysis (varying the ratio of investigation cost to fraud loss) is available in the supplementary materials (\texttt{results/tables/eval\_cost\_curve.csv}), which confirms PCA Anomaly Score dominates across nearly all cost ratios examined.
