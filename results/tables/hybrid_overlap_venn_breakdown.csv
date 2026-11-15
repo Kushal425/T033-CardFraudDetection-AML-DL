@@ -1,0 +1,2 @@
+,capacity,total_frauds,only_ae,only_gmm,only_hybrid,ae_and_gmm_only,ae_and_hybrid_only,gmm_and_hybrid_only,all_three,union_caught,missed_by_all
+0,100,75,1,0,13,2,11,3,26,56,19
