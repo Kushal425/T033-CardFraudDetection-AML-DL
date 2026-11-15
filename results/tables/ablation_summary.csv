@@ -1,0 +1,5 @@
+,factor,best_config,val_pr_auc_best,val_pr_auc_worst,delta_val,selection_criterion,finding
+0,A1: AE vs DAE,DAE (sigma=0.2),0.29351327883424705,0.22715387674159965,0.0663594020926474,Val PR-AUC,Denoising regularisation improves val PR-AUC; test follows.
+1,A2: Latent Dimension,dim=8,0.32524,0.03656,0.28868,Val PR-AUC,"Intermediate dim selected; too small loses capacity, too large overfits."
+2,A3: Feature Set,engineered,0.56174,0.22715,0.33459000000000005,Val PR-AUC,Engineered features provide marginal gain; base 31-dim PCA competitive.
+3,A7: Fusion Method,N/A,0.30172246816471726,0.10384563372920554,0.19787683443551174,Val PR-AUC,Fusion method effect small; GMM val score dominates selection (alpha=1.0).

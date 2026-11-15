@@ -1,0 +1,5 @@
+,latent_dim,val_pr_auc,val_recall_fpr05,selected_on_val,test_pr_auc,note
+0,2,0.04292,0.38596,False,,Test evaluated only for selected dim=12 (see ae_dae_metrics.csv)
+1,4,0.03656,0.24561,False,,Test evaluated only for selected dim=12 (see ae_dae_metrics.csv)
+2,8,0.32524,0.73684,True,,Test evaluated only for selected dim=12 (see ae_dae_metrics.csv)
+3,16,0.24222,0.63158,False,,Test evaluated only for selected dim=12 (see ae_dae_metrics.csv)

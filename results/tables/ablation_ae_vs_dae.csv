@@ -1,0 +1,3 @@
+,model,noise_sigma,is_dae,latent_dim,hidden,val_pr_auc,test_pr_auc,val_recall_fpr05,test_recall_fpr05,selected_on_val,source
+0,"AE (Undercomplete, no noise)",0.0,False,12,"[32, 16]",0.22715387674159965,0.35737409754258864,0.6666666666666666,0.68,False,ae_metrics.csv
+1,"DAE (Denoising, sigma=0.2)",0.2,True,12,"[32, 16]",0.29351327883424705,0.48183019795472404,0.7368421052631579,0.7733333333333333,True,ae_dae_metrics.csv
