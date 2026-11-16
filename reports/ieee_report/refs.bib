@@ -1,5 +1,15 @@
-% Canonical IEEE Phase 1 Bibliography for Team T033
-% Consolidated and deduplicated across all team member references
+@article{aggarwal2015theoretical,
+  title     = {Theoretical Foundations and Algorithms for Outlier Ensembles},
+  author    = {Aggarwal, Charu C. and Sathe, Saket},
+  journal   = {ACM SIGKDD Explorations Newsletter},
+  volume    = {17},
+  number    = {1},
+  pages     = {24--47},
+  year      = {2015},
+  publisher = {ACM}
+}
+
+% ─── Anomaly Score Normalization ─────────────────────────────────────────────
 
 @book{aggarwal2017outlier,
   author    = {Aggarwal, Charu C.},
@@ -20,6 +30,36 @@
   publisher = {IEEE}
 }
 
+@article{an2015variational,
+  author    = {An, Jinwon and Cho, Sungzoon},
+  title     = {Variational Autoencoder based Anomaly Detection using Reconstruction Probability},
+  journal   = {Special Lecture on IE},
+  volume    = {2},
+  number    = {1},
+  pages     = {1--18},
+  year      = {2015},
+  note      = {SNU Data Mining Center Technical Report}
+}
+
+@inproceedings{ancho2015variational,
+  title     = {Variational Autoencoder based Anomaly Detection using Reconstruction Probability},
+  author    = {An, Jinwon and Cho, Sungzoon},
+  booktitle = {Special Lecture on IE},
+  volume    = {2},
+  number    = {1},
+  year      = {2015}
+}
+
+@article{baldi1989neural,
+  title   = {Neural Networks and Principal Component Analysis: Learning from Examples Without Local Minima},
+  author  = {Baldi, Pierre and Hornik, Kurt},
+  journal = {Neural Networks},
+  volume  = {2},
+  number  = {1},
+  pages   = {53--58},
+  year    = {1989}
+}
+
 @inproceedings{berg2007bootstrap_ci,
   author    = {Berg-Kirkpatrick, Taylor and Burkett, David and Klein, Dan},
   title     = {An Empirical Investigation of Statistical Significance in {NLP}},
@@ -27,6 +67,17 @@
   year      = {2012},
   pages     = {995--1005},
 }
+
+@article{bifet2007learning,
+  title     = {Learning from Time-Changing Data with Adaptive Windowing},
+  author    = {Bifet, Albert and Gavald\`{a}, Ricard},
+  booktitle = {Proceedings of the 2007 SIAM International Conference on Data Mining},
+  pages     = {443--448},
+  year      = {2007},
+  publisher = {SIAM}
+}
+
+% ─── PCA Anomaly Detection ───────────────────────────────────────────────────
 
 @book{bishop2006pattern,
   author    = {Bishop, Christopher M.},
@@ -37,17 +88,26 @@
   year      = {2006}
 }
 
-@inproceedings{breunig2000lof,
-  author    = {Breunig, Markus M. and Kriegel, Hans-Peter and Ng, Raymond T.
-               and Sander, J{\"o}rg},
-  title     = {{LOF}: Identifying Density-Based Local Outliers},
-  booktitle = {Proceedings of the 2000 ACM SIGMOD International Conference on
-               Management of Data},
-  year      = {2000},
-  pages     = {93--104},
-  doi       = {10.1145/342009.335388},
-  publisher = {ACM},
+@article{bourlard1988auto,
+  title   = {Auto-association by multilayer perceptrons and singular value decomposition},
+  author  = {Bourlard, Herv{\'e} and Kamp, Yves},
+  journal = {Biological Cybernetics},
+  volume  = {59},
+  number  = {4-5},
+  pages   = {291--294},
+  year    = {1988}
 }
+
+@inproceedings{breunig2000lof,
+  title     = {{LOF}: Identifying Density-Based Local Outliers},
+  author    = {Breunig, Markus M. and Kriegel, Hans-Peter and Ng, Raymond T. and Sander, J\"{o}rg},
+  booktitle = {Proceedings of the 2000 ACM SIGMOD International Conference on Management of Data},
+  pages     = {93--104},
+  year      = {2000},
+  publisher = {ACM}
+}
+
+% ─── GMM and EM ───────────────────────────────────────────────────────────────
 
 @inproceedings{carcillo2018scarff,
   author    = {Carcillo, Fabrizio and Dal Pozzolo, Andrea and Le Borgne, Yann-A{\"e}l and Caelen, Olivier and Mazzer, Yannick and Bontempi, Gianluca},
@@ -63,7 +123,7 @@
   journal   = {ACM Computing Surveys},
   volume    = {41},
   number    = {3},
-  pages     = {1--58},
+  pages     = {15:1--15:58},
   year      = {2009},
   publisher = {ACM New York, NY, USA}
 }
@@ -76,6 +136,17 @@
   pages   = {159--166},
   doi     = {10.1109/SSCI.2015.33},
 }
+
+@misc{dal2015calibrating,
+  title     = {Calibrating Probability with Undersampling for Unbalanced Classification},
+  author    = {Dal Pozzolo, Andrea and Caelen, Olivier and Johnson, Reid A. and Bontempi, Gianluca},
+  booktitle = {2015 IEEE Symposium Series on Computational Intelligence (SSCI)},
+  pages     = {159--166},
+  year      = {2015},
+  publisher = {IEEE}
+}
+
+% ─── Concept Drift ───────────────────────────────────────────────────────────
 
 @inproceedings{dalpozzolo2015calibrating,
   author    = {Dal Pozzolo, Andrea and Caelen, Olivier and Johnson, Reid A. and Bontempi, Gianluca},
@@ -94,7 +165,7 @@
   number    = {8},
   pages     = {3784--3797},
   year      = {2018},
-  publisher = {IEEE}
+  doi       = {10.1109/TNNLS.2017.2736643}
 }
 
 @article{davis2006prauc,
@@ -115,15 +186,17 @@
 }
 
 @article{dempster1977maximum,
-  author    = {Dempster, Arthur P. and Laird, Nan M. and Rubin, Donald B.},
   title     = {Maximum Likelihood from Incomplete Data via the {EM} Algorithm},
-  journal   = {Journal of the Royal Statistical Society: Series B (Methodological)},
+  author    = {Dempster, Arthur P. and Laird, Nan M. and Rubin, Donald B.},
+  journal   = {Journal of the Royal Statistical Society, Series B (Statistical Methodology)},
   volume    = {39},
   number    = {1},
-  pages     = {1--22},
+  pages     = {1--38},
   year      = {1977},
-  publisher = {Wiley Online Library}
+  publisher = {Wiley}
 }
+
+% ─── Bootstrap CI ─────────────────────────────────────────────────────────────
 
 @article{efron1979bootstrap,
   author  = {Efron, Bradley},
@@ -135,6 +208,19 @@
   year    = {1979},
   doi     = {10.1214/aos/1176344552},
 }
+
+@article{efron1986bootstrap,
+  title     = {Bootstrap Methods for Standard Errors, Confidence Intervals, and Other Measures of Statistical Accuracy},
+  author    = {Efron, Bradley and Tibshirani, Robert},
+  journal   = {Statistical Science},
+  volume    = {1},
+  number    = {1},
+  pages     = {54--75},
+  year      = {1986},
+  publisher = {Institute of Mathematical Statistics}
+}
+
+% ─── PR-AUC under Imbalance ──────────────────────────────────────────────────
 
 @article{elkan2001cost,
   author  = {Elkan, Charles},
@@ -155,6 +241,23 @@
   doi     = {10.1016/j.patrec.2005.10.010},
 }
 
+@inproceedings{gong2019memorizing,
+  author    = {Gong, Dong and Liu, Lingqiao and Le, Vuong and Saha, Budhaditya and Mansour, Moussa Reda and Venkatesh, Svetha and van den Hengel, Anton},
+  title     = {Memorizing Normality to Detect Anomaly: Memory-Augmented Deep Autoencoder for Unsupervised Anomaly Detection},
+  booktitle = {IEEE/CVF International Conference on Computer Vision (ICCV)},
+  pages     = {1705--1714},
+  year      = {2019},
+  doi       = {10.1109/ICCV.2019.00179}
+}
+
+@book{goodfellow2016deep,
+  author    = {Goodfellow, Ian and Bengio, Yoshua and Courville, Aaron},
+  title     = {Deep Learning},
+  publisher = {MIT Press},
+  address   = {Cambridge, MA},
+  year      = {2016}
+}
+
 @article{hand2001prospecting,
   author    = {Hand, David J. and Blunt, Glenn},
   title     = {Prospecting for Winners in Credit Card Risk},
@@ -164,6 +267,34 @@
   pages     = {283--300},
   year      = {2001},
   publisher = {Oxford University Press}
+}
+
+@inproceedings{he2015delving,
+  title     = {Delving Deep into Rectifiers: Surpassing Human-Level Performance on ImageNet Classification},
+  author    = {He, Kaiming and Zhang, Xiangyu and Ren, Shaoqing and Sun, Jian},
+  booktitle = {Proceedings of the IEEE International Conference on Computer Vision (ICCV)},
+  pages     = {1026--1034},
+  year      = {2015}
+}
+
+@article{hinton2006reducing,
+  author    = {Hinton, Geoffrey E. and Salakhutdinov, Ruslan R.},
+  title     = {Reducing the Dimensionality of Data with Neural Networks},
+  journal   = {Science},
+  volume    = {313},
+  number    = {5786},
+  pages     = {504--507},
+  year      = {2006},
+  publisher = {American Association for the Advancement of Science},
+  doi       = {10.1126/science.1127647}
+}
+
+@inproceedings{ioffe2015batch,
+  author    = {Ioffe, Sergey and Szegedy, Christian},
+  title     = {Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift},
+  booktitle = {Proceedings of the 32nd International Conference on Machine Learning (ICML)},
+  pages     = {448--456},
+  year      = {2015}
 }
 
 @book{james2021introduction,
@@ -186,6 +317,33 @@
   doi       = {10.1098/rsta.2015.0202},
 }
 
+@inproceedings{kingma2015adam,
+  author    = {Kingma, Diederik P. and Ba, Jimmy},
+  title     = {Adam: A Method for Stochastic Optimization},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2015},
+  url       = {http://arxiv.org/abs/1412.6980}
+}
+
+@article{kriegel2011interpreting,
+  title     = {Interpreting and Unifying Outlier Scores},
+  author    = {Kriegel, Hans-Peter and Kr\"{o}ger, Peer and Schubert, Erich and Zimek, Arthur},
+  journal   = {Proceedings of the 2011 SIAM International Conference on Data Mining},
+  pages     = {13--24},
+  year      = {2011},
+  publisher = {SIAM}
+}
+
+% ─── Denoising Autoencoder ───────────────────────────────────────────────────
+
+@book{kuncheva2004combining,
+  title     = {Combining Pattern Classifiers: Methods and Algorithms},
+  author    = {Kuncheva, Ludmila I.},
+  year      = {2004},
+  publisher = {John Wiley \& Sons},
+  address   = {Hoboken, NJ}
+}
+
 @book{leborgne2022handbook,
   author    = {Le Borgne, Yann-A{\"e}l and Siblini, Wissam and Lebichot, Bertrand and Bontempi, Gianluca},
   title     = {Reproducible Machine Learning for Credit Card Fraud Detection - Practical Handbook},
@@ -194,13 +352,27 @@
   url       = {https://fraud-detection-handbook.github.io/fraud-detection-handbook/}
 }
 
-@inproceedings{liu2008isolation,
-  author    = {Liu, Fei Tony and Ting, Kai Ming and Zhou, Zhi-Hua},
+@article{liu2008isolation,
   title     = {Isolation Forest},
-  booktitle = {Proceedings of the 2008 Eighth IEEE International Conference on Data Mining (ICDM)},
+  author    = {Liu, Fei Tony and Ting, Kai Ming and Zhou, Zhi-Hua},
+  booktitle = {Proceedings of the 8th IEEE International Conference on Data Mining (ICDM)},
   pages     = {413--422},
   year      = {2008},
-  organization = {IEEE}
+  publisher = {IEEE}
+}
+
+% ─── LOF ─────────────────────────────────────────────────────────────────────
+
+@article{lucas2020dataset,
+  author    = {Lucas, Yvan and Portier, Pierre-Edouard and Laporte, L{\'e}a and He-Guelton, L{\'e}o and Caelen, Olivier and Granitzer, Michael and Calabretto, Sylvie},
+  title     = {Dataset Shift in Credit Card Fraud Detection: Systems for Detecting Fraudulent Transactions and Coping with Non-Stationarity},
+  journal   = {Machine Learning},
+  volume    = {109},
+  number    = {9},
+  pages     = {1773--1802},
+  year      = {2020},
+  publisher = {Springer},
+  doi       = {10.1007/s10994-020-05894-8}
 }
 
 @book{mclachlan2000finite,
@@ -230,6 +402,25 @@
   publisher = {MIT Press},
 }
 
+@article{pumsirirat2018credit,
+  author    = {Pumsirirat, Eknarin and Yan, Liu},
+  title     = {Credit Card Fraud Detection using Deep Learning based on Auto-Encoder and Restricted {Boltzmann} Machine},
+  journal   = {International Journal of Machine Learning and Computing},
+  volume    = {8},
+  number    = {1},
+  pages     = {18--25},
+  year      = {2018},
+  doi       = {10.18178/ijmlc.2018.8.1.652}
+}
+
+@inproceedings{rezende2015variational,
+  author    = {Rezende, Danilo Jimenez and Mohamed, Shakir},
+  title     = {Variational Inference with Normalizing Flows},
+  booktitle = {Proceedings of the 32nd International Conference on Machine Learning (ICML)},
+  pages     = {1530--1538},
+  year      = {2015}
+}
+
 @article{rousseeuw2011robust,
   author    = {Rousseeuw, Peter J. and Hubert, Mia},
   title     = {Robust Statistics for Outlier Detection},
@@ -239,6 +430,18 @@
   pages     = {73--79},
   year      = {2011},
   publisher = {Wiley}
+}
+
+@article{roy2018deep,
+  author    = {Roy, Anuradha and Sun, Jing and Lu, Rongxing and Mahoney, Tyler},
+  title     = {Deep Learning Detecting Fraud in Credit Card Transactions},
+  journal   = {Systems Science \& Control Engineering},
+  volume    = {6},
+  number    = {sup1},
+  pages     = {220--228},
+  year      = {2018},
+  publisher = {Taylor \& Francis},
+  doi       = {10.1080/21642583.2018.1525126}
 }
 
 @article{saito2015prauc_imbalance,
@@ -252,10 +455,10 @@
   doi     = {10.1371/journal.pone.0118432},
 }
 
-@article{saito2015precision,
-  author    = {Saito, Takaya and Rehmsmeier, Marc},
+@inproceedings{saito2015precision,
   title     = {The Precision-Recall Plot Is More Informative than the {ROC} Plot When Evaluating Binary Classifiers on Imbalanced Datasets},
-  journal   = {PLOS ONE},
+  author    = {Saito, Takaya and Rehmsmeier, Marc},
+  booktitle = {PLOS ONE},
   volume    = {10},
   number    = {3},
   pages     = {e0118432},
@@ -263,9 +466,20 @@
   publisher = {Public Library of Science}
 }
 
+% ─── ULB Card Fraud Dataset ──────────────────────────────────────────────────
+
+@inproceedings{sakurada2014anomaly,
+  author    = {Sakurada, Mayu and Yairi, Takehisa},
+  title     = {Anomaly Detection Using Autoencoders with Nonlinear Dimensionality Reduction},
+  booktitle = {Proceedings of the MLSDA 2014 2nd Workshop on Machine Learning for Sensory Data Analysis},
+  pages     = {4--11},
+  year      = {2014},
+  doi       = {10.1145/2689746.2689747}
+}
+
 @article{scholkopf2001estimating,
-  author    = {Sch{\"o}lkopf, Bernhard and Platt, John C. and Shawe-Taylor, John and Smola, Alex J. and Williamson, Robert C.},
   title     = {Estimating the Support of a High-Dimensional Distribution},
+  author    = {Sch\"{o}lkopf, Bernhard and Platt, John C. and Shawe-Taylor, John and Smola, Alexander J. and Williamson, Robert C.},
   journal   = {Neural Computation},
   volume    = {13},
   number    = {7},
@@ -273,6 +487,8 @@
   year      = {2001},
   publisher = {MIT Press}
 }
+
+% ─── Isolation Forest ─────────────────────────────────────────────────────────
 
 @article{schwarz1978estimating,
   author    = {Schwarz, Gideon},
@@ -285,12 +501,33 @@
   publisher = {Institute of Mathematical Statistics}
 }
 
-@techreport{shyu2003novel,
-  author      = {Shyu, Mei-Ling and Chen, Shu-Ching and Sarinnapakorn, Kanoksri and Chang, LiWu},
-  title       = {A Novel Anomaly Detection Scheme Based on Principal Component Classifier},
-  institution = {Department of Electrical and Computer Engineering, University of Miami},
-  number      = {TR-2003-01},
-  year        = {2003}
+@article{shyu2003novel,
+  title     = {A Novel Anomaly Detection Scheme Based on Principal Component Classifier},
+  author    = {Shyu, Mei-Ling and Chen, Shu-Ching and Sarinnapakorn, Kanoksri and Chang, LiWu},
+  booktitle = {Proceedings of the IEEE Foundations and New Directions of Data Mining Workshop},
+  pages     = {172--179},
+  year      = {2003},
+  publisher = {IEEE}
+}
+
+@article{srivastava2014dropout,
+  author    = {Srivastava, Nitish and Hinton, Geoffrey and Krizhevsky, Alex and Sutskever, Ilya and Salakhutdinov, Ruslan},
+  title     = {Dropout: A Simple Way to Prevent Neural Networks from Overfitting},
+  journal   = {Journal of Machine Learning Research},
+  volume    = {15},
+  number    = {56},
+  pages     = {1929--1958},
+  year      = {2014}
+}
+
+@article{tax2002combining,
+  title     = {Combining one-class classifiers},
+  author    = {Tax, David M. J. and Duin, Robert P. W.},
+  journal   = {Lecture Notes in Computer Science},
+  volume    = {2364},
+  pages     = {299--308},
+  year      = {2002},
+  publisher = {Springer}
 }
 
 @inproceedings{tax2004support,
@@ -304,3 +541,44 @@
   doi       = {10.1023/B:MACH.0000008084.60811.49},
 }
 
+@inproceedings{vincent2008extracting,
+  author    = {Vincent, Pascal and Larochelle, Hugo and Bengio, Yoshua and Manzagol, Pierre-Antoine},
+  title     = {Extracting and Composing Robust Features with Denoising Autoencoders},
+  booktitle = {Proceedings of the 25th International Conference on Machine Learning (ICML)},
+  pages     = {1096--1103},
+  year      = {2008},
+  doi       = {10.1145/1390156.1390294}
+}
+
+@inproceedings{vincent2010stacked,
+  title     = {Stacked Denoising Autoencoders: Learning Useful Representations in a Deep Network with a Local Denoising Criterion},
+  author    = {Vincent, Pascal and Larochelle, Hugo and Lajoie, Isabelle and Bengio, Yoshua and Manzagol, Pierre-Antoine},
+  journal   = {Journal of Machine Learning Research},
+  volume    = {11},
+  pages     = {3371--3408},
+  year      = {2010}
+}
+
+% ─── OC-SVM ──────────────────────────────────────────────────────────────────
+
+@article{vincent2011connection,
+  author    = {Vincent, Pascal},
+  title     = {A Connection Between Score Matching and Denoising Autoencoders},
+  journal   = {Neural Computation},
+  volume    = {23},
+  number    = {7},
+  pages     = {1661--1674},
+  year      = {2011},
+  publisher = {MIT Press},
+  doi       = {10.1162/NECO_a_00142}
+}
+
+@inproceedings{zong2018deep,
+  title     = {Deep Autoencoding {Gaussian} Mixture Model for Unsupervised Anomaly Detection},
+  author    = {Zong, Bo and Song, Qi and Min, Martin Renqiang and Cheng, Wei and Lumezanu, Cristian and Cho, Daeki and Chen, Haifeng},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2018},
+  url       = {https://openreview.net/forum?id=BJJLHbb0-}
+}
+
+% ─── Score Fusion / Combination ───────────────────────────────────────────────
