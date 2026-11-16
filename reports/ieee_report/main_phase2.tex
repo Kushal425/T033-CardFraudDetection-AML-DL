@@ -1,0 +1,187 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{siunitx}
+\usepackage{multirow}
+\graphicspath{{../../}{./}{results/figures/}{figures/}}
+
+% Paper numbers — auto-generated from empirical score arrays, do not edit by hand
+\IfFileExists{paper_numbers_p2.tex}{\input{paper_numbers_p2}}{\input{../../results/tables/paper_numbers_p2}}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{Card Fraud Triage via Deep Autoencoders and Hybrid Latent Density Scoring:\\
+Phase 2 — Deep Learning \& Hybrid Anomaly Detection\\
+{\footnotesize Team T033, Section A, Project 26 — Rishihood University}}
+
+\author{
+\IEEEauthorblockN{Kushal Sarkar\textsuperscript{1},
+                  Krishna Pramod Dubale\textsuperscript{2},
+                  Apoorva Choudhary\textsuperscript{3},
+                  Vani Rudra\textsuperscript{4},
+                  Prachee Dhar\textsuperscript{5}}
+\IEEEauthorblockA{School of Technology, Rishihood University, Sonipat, Haryana, India\\
+Enrollment: \textsuperscript{1}2401020033
+            \textsuperscript{2}2401010239
+            \textsuperscript{3}2401010092
+            \textsuperscript{4}2401010490
+            \textsuperscript{5}2401010330\\
+Faculty Advisors: Shobhit Johri, Arun Chauhan, Ashwin Tewary}
+}
+
+\maketitle
+
+\begin{abstract}
+In Phase 1 of Project T033, classical anomaly detection established linear Principal Component Analysis (PCA) reconstruction error as the leading baseline (PR-AUC \PRAUCTestPCA{}, Recall@0.5\% FPR \RecallFPRHalfPctPCA{} on the held-out test split), outperforming Gaussian Mixture Models (GMM, PR-AUC \PRAUCTestGMM{}) and Isolation Forests (PR-AUC \PRAUCTestIFOREST{}). In this Phase 2 study, we investigate two fundamental hypotheses: (1) whether non-linear manifold learning via Deep Undercomplete and Denoising Autoencoders (DAE) improves fraud triage over linear PCA, and (2) whether fitting a Gaussian Mixture Model in the compressed latent bottleneck ($\mathbf{z} \in \mathbb{R}^8$) eliminates the curse of dimensionality while retaining explicit probabilistic density scoring.
+Evaluating ten models on the chronologically split ULB benchmark (\NTest{} test transactions, \NFraudTest{} test frauds, base rate \BaseRateTest{}), we demonstrate that the Denoising Autoencoder ($\sigma=0.2$, PR-AUC \PRAUCTestDAE{}) significantly outperforms full-space GMM ($\Delta = +0.2139$, $p < 0.05$) and doubles fraud recall at tight false-alarm budgets (\RecallFPRTightDAE{} vs.\ \RecallFPRTightGMM{} at FPR $\le 0.1\%$). However, linear PCA remains the highest performing standalone detector on this PCA-anonymized dataset because deep architectures exhibit partial over-generalization to anomalies. Furthermore, standalone latent-space density estimation (Hybrid H1, PR-AUC \PRAUCTestHOne{}) degrades due to non-volume-preserving encoder compression and latent non-Gaussianity. Crucially, multi-objective DAGMM-lite (Hybrid H3), which augments latent coordinates with reconstruction error and cosine angle distortion, achieves the highest test recall at FPR $\le 0.5\%$ across all evaluated methods (\RecallFPRHalfPctHThree{}, catching 60 of 75 frauds). We provide complete 5-seed stability profiles, stratified bootstrap confidence intervals, ablation breakdowns, and operational review triage policies.
+\end{abstract}
+
+\begin{IEEEkeywords}
+fraud triage, deep autoencoders, denoising autoencoders, Gaussian mixture models, latent space density, DAGMM-lite, class imbalance, precision-recall
+\end{IEEEkeywords}
+
+%%% ─── 1. Introduction ────────────────────────────────────────────────────────
+\input{sections/p2_introduction}
+
+%%% ─── 2. Deep Learning Literature Review ─────────────────────────────────────
+\input{sections/p2_dl_literature}
+
+%%% ─── 3. DL Data Pipeline & Leakage Controls ────────────────────────────────
+\input{sections/p2_dl_data_pipeline}
+
+%%% ─── 4. Autoencoder Architecture & Theory ───────────────────────────────────
+\input{sections/p2_architecture}
+
+%%% ─── 5. Autoencoder Experimental Results ────────────────────────────────────
+\input{sections/p2_ae_results}
+
+%%% ─── 6. Latent-Space GMM Theory ─────────────────────────────────────────────
+\input{sections/p2_hybrid_theory}
+
+%%% ─── 7. Latent GMM Results & Diagnostic Evidence ────────────────────────────
+\input{sections/p2_latent_gmm_results}
+
+%%% ─── 8. Hybrid Score Fusion & DAGMM-lite (H2 & H3) ──────────────────────────
+\input{sections/p2_hybrid}
+
+%%% ─── 9. Comprehensive Ablation Study ────────────────────────────────────────
+\input{sections/p2_ablation}
+
+%%% ─── 10. Technical Validation & Sanity Audits ──────────────────────────────
+\input{sections/p2_validation}
+
+%%% ─── 11. Master Empirical Synthesis & Benchmark Comparison ─────────────────
+\section{Master Empirical Synthesis and Benchmark Comparison}
+\label{sec:master_synthesis}
+
+To establish the complete comparative landscape between Phase 1 classical baselines and Phase 2 deep learning and hybrid architectures, all ten models were evaluated on the strictly held-out chronological test partition ($N=56{,}962$, 75 frauds). Table~\ref{tab:master_benchmark_10} reports the complete empirical metrics, including validation and test PR-AUC, 95\% stratified bootstrap confidence intervals, ROC-AUC, recall at operational false positive rate (FPR) constraints, and precision at fixed review capacities.
+
+\begin{table*}[t]
+\centering
+\caption{Comprehensive Empirical Evaluation: Phase 1 Classical Baselines vs.\ Phase 2 Deep Learning and Hybrid Models on Chronological Test Set ($N=56{,}962$, 75 Frauds, Base Rate \BaseRateTest{}).}
+\label{tab:master_benchmark_10}
+\scriptsize
+\begin{tabular}{llcccccccc}
+\toprule
+\textbf{Model Key} & \textbf{Architecture / Method} & \textbf{Phase} & \textbf{Val PR-AUC} & \textbf{Test PR-AUC} & \textbf{95\% Bootstrap CI} & \textbf{Test ROC-AUC} & \textbf{Rec@0.1\%FPR} & \textbf{Rec@0.5\%FPR} & \textbf{Prec@K=100} \\
+\midrule
+\texttt{pca} & PCA Reconstruction Error & P1 & \textbf{0.7066} & \textbf{0.7425} & [0.6415, 0.8368] & 0.9303 & \textbf{76.00\%} & 77.33\% & \textbf{57.0\%} \\
+\texttt{ae\_dae} & Denoising Autoencoder ($\sigma=0.2$) & P2 & 0.2935 & \textbf{0.4818} & [0.3707, 0.6166] & 0.9322 & 70.67\% & 77.33\% & 53.0\% \\
+\texttt{hybrid\_fusion} & Hybrid H2: Score Fusion & P2 & 0.2935 & \textbf{0.4818} & [0.3707, 0.6166] & 0.9322 & 70.67\% & 77.33\% & 53.0\% \\
+\texttt{hybrid\_dagmmlite} & Hybrid H3: DAGMM-lite & P2 & 0.3913 & \textbf{0.4541} & [0.3524, 0.5884] & 0.9127 & 68.00\% & \textbf{80.00\%} & 48.0\% \\
+\texttt{lof} & Local Outlier Factor ($k=20$) & P1 & 0.4069 & 0.4478 & [0.3447, 0.5822] & 0.9048 & 65.33\% & 72.00\% & 47.0\% \\
+\texttt{ae} & Standard Deep Autoencoder & P2 & 0.2272 & 0.3574 & [0.2618, 0.4848] & 0.9021 & 53.33\% & 68.00\% & 40.0\% \\
+\texttt{gmm} & Full-Space GMM ($K=4$, Full Cov) & P1 & 0.1038 & 0.2679 & [0.1843, 0.3800] & 0.9391 & 33.33\% & 66.67\% & 31.0\% \\
+\texttt{hybrid\_latentgmm} & Hybrid H1: Latent GMM ($k=8$) & P2 & 0.1159 & 0.1724 & [0.1329, 0.2310] & 0.9398 & 24.00\% & 74.67\% & 30.0\% \\
+\texttt{ocsvm} & One-Class SVM (RBF kernel) & P1 & 0.0613 & 0.1322 & [0.1030, 0.1784] & \textbf{0.9604} & 0.00\% & 69.33\% & 16.0\% \\
+\texttt{iforest} & Isolation Forest (100 trees) & P1 & 0.0330 & 0.0577 & [0.0444, 0.0787] & 0.9567 & 1.33\% & 34.67\% & 7.0\% \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{final_phase2_pr_curves.png}
+\caption{Precision-Recall curves comparing all Phase 1 and Phase 2 models on the untouched chronological test set. The dashed gray line indicates the random baseline ($\text{base rate} = 0.1317\%$).}
+\label{fig:final_pr_curves}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{final_phase2_recall_at_fpr.png}
+\caption{Operational fraud detection recall on test frauds ($N=75$) across operational false positive rate budgets (FPR $\le 0.1\%$, FPR $\le 0.5\%$, FPR $\le 1.0\%$).}
+\label{fig:final_recall_bars}
+\end{figure}
+
+Fig.~\ref{fig:final_pr_curves} illustrates the precision-recall curves for all models. DAE and DAGMM-lite maintain substantial precision across high-recall operating regimes, comfortably separating themselves from classical density estimation (GMM) and tree partitioning (Isolation Forest). Fig.~\ref{fig:final_recall_bars} breaks down operational recall across fixed FPR budgets.
+
+%%% ─── 12. Discussion & Insights ─────────────────────────────────────────────
+\section{Discussion, Theoretical Insights, and Failure Modes}
+\label{sec:discussion}
+
+\subsection{Why Does Denoising Autoencoder Outperform Classical GMM?}
+DAE ($\text{PR-AUC} = \PRAUCTestDAE{}$) achieves a statistically significant $+0.2139$ PR-AUC improvement over full-space GMM ($p < 0.05$), doubling recall at FPR $\le 0.1\%$ ($70.67\%$ vs.\ $33.33\%$). This advantage stems from the inductive bias established by Vincent \cite{vincent2011connection}: corrupted inputs force the network to estimate the score vector $\nabla_{\mathbf{x}} \log p(\mathbf{x})$, contracting transaction representations onto the nominal manifold. Full-space GMM in $\mathbb{R}^{30}$ suffers from high parameter variance ($465$ parameters per component), causing covariance matrices to become ill-conditioned and diluting density estimation in sparse fraud-prone regions.
+
+\subsection{Why Does Linear PCA Retain the Highest PR-AUC?}
+Despite the expressiveness of deep autoencoders, linear PCA reconstruction error remains the top-performing detector ($\text{PR-AUC} = \PRAUCTestPCA{}$). Two primary factors explain this result:
+\begin{enumerate}
+    \item \textbf{PCA Pre-Anonymized Representation:} The benchmark features $V_1$--$V_{28}$ are already orthogonal principal components generated from an original bank dataset. Legitimate spending behavior is concentrated along linear coordinates.
+    \item \textbf{Over-Generalization Pathology:} As Gong et al.\ \cite{gong2019memorizing} established, unconstrained deep neural networks possess universal function approximation capacity. The non-linear decoder partially memorizes and reconstructs anomalous transaction features. Linear PCA has zero capacity to bend non-linearly, penalizing fraud deviations with strictly quadratic residual growth.
+\end{enumerate}
+
+\subsection{Why Does Latent GMM (H1) Degrade Detection?}
+The failure of standalone latent-space density estimation ($\text{PR-AUC} = \PRAUCTestHOne{}$) illuminates a critical theoretical caveat:
+\begin{enumerate}
+    \item \textbf{Non-Volume-Preserving Encoder Mapping:} Because the encoder $f_{\boldsymbol{\theta}}: \mathbb{R}^{30} \to \mathbb{R}^8$ has rectangular, non-invertible dimensions, $-\log p(\mathbf{z})$ evaluates density on the *latent coordinate manifold*, not the true data density $p(\mathbf{x})$. Without the Jacobian determinant correction, anomalous transactions are frequently mapped into high-density latent clusters near $\mathbf{z} \approx \mathbf{0}$.
+    \item \textbf{Off-Manifold Nature of Credit Card Fraud:} Fraudulent transactions deviate primarily in orthogonal residual directions (high reconstruction error $\|\mathbf{x} - \hat{\mathbf{x}}\|^2$), not in nominal latent coordinates.
+\end{enumerate}
+
+\subsection{The Success of DAGMM-lite (H3)}
+By combining latent representation $\mathbf{z}$ with reconstruction distance and cosine similarity into an augmented vector $\mathbf{v} = [\mathbf{z}, e^{\text{mse}}, e^{\text{cos}}] \in \mathbb{R}^{10}$, DAGMM-lite resolves H1's blind spot. It achieves **80.00\% recall at FPR $\le 0.5\%$**, outperforming all other models by capturing both directional angle distortion and residual magnitude.
+
+%%% ─── 13. Threats to Validity ───────────────────────────────────────────────
+\section{Threats to Validity and Practical Limitations}
+\label{sec:threats_validity}
+
+\begin{itemize}
+    \item \textbf{Limited Test Fraud Sample ($N=75$):} Although the test partition encompasses 56,962 transactions, the extreme rarity of fraud means only 75 positive events exist, resulting in moderately wide bootstrap confidence intervals ($\pm 0.10$ PR-AUC).
+    \item \textbf{PCA-Anonymized Feature Space:} The absence of uncompressed raw transaction attributes (e.g., merchant ID, cardholder historical velocity) limits domain-specific feature engineering.
+    \item \textbf{48-Hour Sampling Window:} The dataset represents a two-day snapshot, precluding analysis of multi-day seasonality, pay-cycle surges, or long-term concept drift \cite{lucas2020dataset}.
+    \item \textbf{Research Disclaimer:} This system represents an academic benchmark of representation learning under class imbalance and is not certified for standalone production authorization without human analyst oversight.
+\end{itemize}
+
+%%% ─── 14. Conclusion & Future Work ──────────────────────────────────────────
+\section{Conclusion and Future Work}
+\label{sec:conclusion}
+
+In Phase 2 of Project T033, we investigated deep learning and hybrid architectures for unsupervised credit card fraud triage. Our findings demonstrate that Denoising Autoencoders significantly outperform classical Gaussian Mixture Models ($\text{PR-AUC} = \PRAUCTestDAE{}$ vs.\ \PRAUCTestGMM{}, $p < 0.05$) and double fraud catch rates under strict false-alarm budgets. While linear PCA remains the highest standalone detector due to the pre-linear nature of the dataset and autoencoder over-generalization, the decoupled DAGMM-lite hybrid achieves the highest operational recall across all models (\RecallFPRHalfPctHThree{} at $\text{FPR} \le 0.5\%$). Future work will investigate memory-augmented autoencoders (MemAE) to restrict anomalous reconstruction and graph neural network representations to model cardholder-merchant bipartite networks over multi-month transaction streams.
+
+%%% ─── 15. Individual Contributions ──────────────────────────────────────────
+\section{Individual Contributions}
+\label{sec:contributions}
+
+In accordance with academic integrity guidelines, all team members completed distinct, modular, verified engineering contributions:
+\begin{itemize}
+    \item \textbf{Kushal Sarkar} (Lead): Pipeline integration, invariant enforcement, score contract testing, master 10-model comparison (`src/final_phase2.py`), final notebook execution (`06b`), slide assembly, and IEEE report coordination.
+    \item \textbf{Krishna Pramod Dubale}: Deep learning literature review, theoretical gap analysis, DL data pipeline invariant auditing, and coordinate variance dominance verification (`src/eda_dl.py`).
+    \item \textbf{Apoorva Choudhary}: Latent-space GMM formulation, theoretical proofs on change-of-variables and parameter complexity, H1 latent-space grid search, and failure diagnostic analysis (`src/hybrid_latent_gmm.py`).
+    \item \textbf{Vani Rudra}: Deep Undercomplete and Denoising Autoencoder architecture design, legitimate-only training pipeline, 5-seed stability validation, and inference latency profiling (`src/autoencoder.py`, `src/train_ae.py`).
+    \item \textbf{Prachee Dhar}: Normalized hybrid score fusion (H2), decoupled DAGMM-lite (H3), multi-model overlap Venn analysis, and comprehensive master ablation study (`src/hybrid_fusion.py`, `src/hybrid_dagmm_lite.py`, `src/ablation.py`).
+\end{itemize}
+
+%%% ─── References ─────────────────────────────────────────────────────────────
+\bibliographystyle{IEEEtran}
+\bibliography{refs_phase2}
+
+\end{document}
