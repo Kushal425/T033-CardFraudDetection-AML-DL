@@ -1,0 +1,301 @@
+\begin{abstract}
+We evaluated two autoencoders and three hybrid anomaly detectors for credit-card fraud triage on the same time-ordered ULB data as Phase~1. The models fit genuine training payments. Validation chooses settings and alert thresholds, and the final evaluation uses 56,962 test payments containing 75 frauds. PCA reconstruction remains the strongest model by average precision (AP, 0.7425). The denoising autoencoder reaches 0.4818 AP and improves on the stored Gaussian mixture model (0.2679 AP) by 0.2139, with a paired 95\% bootstrap interval of [0.1177, 0.3124]. Combining the two scores selects zero weight for the mixture. DAGMM-lite, which adds reconstruction errors to a compressed representation, reaches 0.4541 AP. At a threshold fixed using the 0.5\% validation false-positive target, it catches 59 of 75 test frauds and raises 197 false alarms. The results distinguish how well a model ranks fraud from how many reviews an alert policy creates.
+\end{abstract}
+
+\begin{IEEEkeywords}
+fraud triage, autoencoders, Gaussian mixtures, anomaly detection, average precision
+\end{IEEEkeywords}
+
+\section{Introduction}
+Fraud triage ranks suspicious transactions so an investigator can review the most promising cases first. Fraud is rare, labels may arrive late, and spending patterns can change over time \cite{dalpozzolo2018credit,carcillo2018scarff}. In all 284,807 payments in this benchmark, 492 are frauds. Predicting every payment is genuine would already achieve about 99.83\% accuracy while finding zero frauds. We therefore fit models on genuine examples and evaluate how well their scores rank the frauds in later payments.
+
+Phase~1 compared a Gaussian mixture model (GMM) with PCA reconstruction, Local Outlier Factor (LOF), a one-class SVM, and Isolation Forest \cite{shyu2003novel,breunig2000lof,scholkopf2001estimating,liu2008isolation}. PCA had the strongest test ranking. The GMM tried to describe genuine payments in the full input space. A small density there can indicate fraud or an unusual genuine payment. Its performance was sensitive to the number of components and covariance settings.
+
+Phase~2 asks whether a nonlinear reconstruction model ranks fraud better and whether reconstruction and density provide complementary evidence. We train a standard and a denoising autoencoder. We then fit a mixture to the compressed codes (H1), combine the existing anomaly scores (H2), and fit a mixture to codes plus reconstruction errors (H3). We report a ranking comparison and a separate workload comparison under cutoffs chosen before test evaluation.
+
+\section{Related Work}
+A GMM describes a distribution as a weighted sum of Gaussian components. Expectation--maximization fits the mixture by alternating soft assignments and parameter updates \cite{dempster1977maximum,mclachlan2000finite}. AIC and BIC compare goodness of fit with model size \cite{akaike1974new,schwarz1978estimating}. They reward a good description of training data, while fraud-ranking AP asks whether labeled frauds receive high scores. The two criteria can select different models.
+
+Autoencoders learn a compressed representation from which they try to reconstruct each input \cite{hinton2006reducing}. A linear squared-error autoencoder relates to PCA under suitable conditions \cite{baldi1989neural}. Nonlinear layers can capture relationships beyond a linear subspace, and reconstruction error has been used for anomaly detection \cite{sakurada2014anomaly}. Denoising trains the model to recover an uncorrupted input from a perturbed version \cite{vincent2008extracting,vincent2011connection}. A model with high capacity can still reconstruct anomalies well \cite{gong2019memorizing}. This motivates checking both what was lost during reconstruction and how common a compressed code is.
+
+DAGMM learns a representation and mixture jointly \cite{zong2018deep}. Our DAGMM-lite fits its mixture after training the autoencoder. This lets us reuse the same encoder for H1 and H3 and compare what happens when error features enter the mixture. Precision--recall metrics are particularly useful for this benchmark because fraud is so rare \cite{davis2006relationship,saito2015precision}.
+
+\section{Data and Evaluation Protocol}
+\subsection{Chronological split and inputs}
+The ULB dataset records roughly two days of European card activity \cite{dalpozzolo2015calibrating}. We sort by transaction time and split approximately 60/20/20. Table~\ref{tab:splits} gives the counts. We retain duplicates under the same policy as Phase~1. A stable chronological sort keeps the original order of rows with tied timestamps. The shared split allows model scores to be compared on the same later transactions.
+
+\begin{table}[t]
+\centering
+\caption{Chronological data split}
+\label{tab:splits}
+\begin{tabular}{lrrr}
+\toprule
+Split & Rows & Fraud & Genuine \\
+\midrule
+Train & 170,884 & 360 & 170,524 \\
+Validation & 56,961 & 57 & 56,904 \\
+Test & 56,962 & 75 & 56,887 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The base input has 31 numbers: the anonymous $V_1$--$V_{28}$ features, log-transformed amount, and sine and cosine terms for time. The log transform limits the influence of very large payments. The time terms give nearby values at opposite sides of a daily boundary. We fit each feature's mean and standard deviation using genuine training payments and reuse those values on later data. This limits the influence of high-variance features on squared error. The 360 training frauds are excluded from fitting. The class label is never a model input.
+
+Validation labels enter the AP calculation for selecting settings, fusion weights and the official seed. Early stopping uses reconstruction loss on the 56,904 genuine validation rows. H3's augmented scaler and the H1/H3 mixture fits use genuine training rows. The official comparisons use base features for the neural models and the available Phase~1 score arrays for classical models. The classical pipelines do not all use the same input representation or training sample size. The results compare whole pipelines.
+
+\subsection{Ranking and alert policies}
+AP, called PR-AUC in the project tables, is the primary ranking measure. We also report ROC-AUC and precision among the top 100 alerts. Top-100 precision answers a fixed-capacity review question. The test fraud rate is 0.1317\%, the reference level for AP under random rankings.
+
+For the workload experiment, each model receives a threshold based on genuine validation scores at the target false-positive rate (FPR). We apply that same score threshold to the later test split and count true and false alerts. The realized test FPR can differ from the validation target. Separately, we report recall at fixed points on the test ROC curve. Those points describe a ranking and use thresholds read from the test scores, so they cannot stand in for the earlier fixed policy.
+
+We report stratified 95\% bootstrap intervals on test AP. For paired AP comparisons, we resample the same rows for both models and compute the score difference on each sample \cite{efron1979bootstrap}. The comparison uses 1,000 resamples. With only 75 positive examples the intervals are useful for showing uncertainty on this dataset, and do not establish performance at another bank or time.
+
+\section{Autoencoders}
+\subsection{Model and training}
+Let $x$ denote a scaled input, $f$ the encoder and $g$ the decoder. The encoder produces $z=f(x)$, and the decoder returns $\hat{x}=g(z)$. We use the average squared difference over the 31 inputs as the anomaly score:
+\begin{equation}
+s_{\mathrm{AE}}(x)=\frac{1}{31}\sum_{j=1}^{31}(x_j-\hat{x}_j)^2 .
+\label{eq:mse-short}
+\end{equation}
+A short code makes it harder for the network to copy every input closely. It can also discard a meaningful difference between two payments. A narrow code can underfit genuine behavior, while a wide one can copy more anomalies. The bottleneck sweep checks both possibilities.
+
+The standard AE learns to reconstruct the clean input. During training, the denoising AE (DAE) receives $x+\epsilon$ with independent Gaussian noise of standard deviation 0.2 and learns to reconstruct the clean $x$. Both models receive clean inputs at scoring time, so their reconstruction scores are measured in the same way. Table~\ref{tab:arch-short} lists the selected architectures. Intermediate layers use LeakyReLU, and both selected configurations use zero dropout and weight decay $10^{-5}$.
+
+\begin{table}[t]
+\centering
+\caption{Selected autoencoder settings}
+\label{tab:arch-short}
+\small
+\begin{tabular}{lrr}
+\toprule
+Setting & Standard AE & Denoising AE \\
+\midrule
+Input/output width & 31 & 31 \\
+Encoder hidden widths & 32, 16 & 24, 16 \\
+Code width & 12 & 16 \\
+Training noise s.d. & 0 & 0.2 \\
+Trainable parameters & 3,531 & 2,895 \\
+Official seed & 1024 & 123 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Training uses Adam \cite{kingma2015adam} with initial step size $10^{-3}$, batches of 512, and a maximum of 100 epochs. The implementation clips the gradient norm at 5 and reduces the step size after a plateau. Early stopping has patience 10 epochs on genuine validation loss. These controls prevent long runs from being selected simply because they fit the training rows more closely. Measured scoring time for 10,000 rows in the recorded CPU runs was 1.8 ms for AE and 1.4 ms for DAE. These timings characterize the recorded runs and exclude production review and service costs.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{ae_learning_curves.png}
+\caption{Standard autoencoder reconstruction loss during training. The stopping rule monitors genuine validation rows.}
+\label{fig:training-short}
+\end{figure}
+
+\subsection{Seed sensitivity}
+We compare seeds 42, 123, 456, 789 and 1024. The median validation-AP seed supplies the official score file for each model. Across the five test runs, AE AP is $0.395\pm0.091$ and DAE AP is $0.393\pm0.143$ (mean and population standard deviation). The official checkpoints give test AP 0.3574 and 0.4818, respectively. The official DAE result is stronger, while the five-seed averages are close and the DAE varies more. Figure~\ref{fig:training-short} shows the reconstruction-loss diagnostic. Train and validation curves help check convergence, while validation AP is still needed to choose among models that rank fraud differently.
+
+\section{Hybrid Models}
+\subsection{H1: Gaussian mixture on compressed codes}
+H1 freezes the standard encoder and fits a GMM to its 12-dimensional genuine training codes. For a new payment the score is $-\log p(z)$, where $p$ is the fitted mixture density in code space. Reducing from 31 to 12 dimensions reduces the distinct entries of a full covariance matrix from 496 to 78 per component. This can ease estimation, but the encoder is many-to-one. Two payments can have similar codes even when their inputs differ. Density in code space therefore need not reflect how unusual a payment was in the original space.
+
+We compare covariance types, component counts and covariance regularization. The lowest training BIC selects 16 full-covariance components and gives 0.0520 validation AP in the sweep. Validation AP selects 12 diagonal components with regularization 0.01 and 299 fitted parameters, giving 0.1510 AP during selection. In the final comparison H1 gives 0.1159 validation and 0.1724 test AP. The distinction between sweep and final score rows is important. The results show that a simpler covariance fit does not guarantee better top-ranked fraud alerts.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.9\textwidth]{latentgmm_qq_plots.png}
+\caption{Normal quantile plots for eight latent coordinates. Bending away from the straight line shows where a single Gaussian is a poor description. This check describes individual coordinates. It does not test the full fitted mixture.}
+\label{fig:latent-qq-short}
+\end{figure*}
+
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{latentgmm_nll_distribution.png}
+\caption{H1 negative log-likelihood scores on validation and test. Overlap between genuine and fraud scores limits the ranking.}
+\label{fig:latent-short}
+\end{figure}
+
+We also examine code distributions. Mean absolute skew rises from 1.74 in the 31 input coordinates to 5.05 in the 12 codes. The quantile plots in Fig.~\ref{fig:latent-qq-short} show departures from a bell-shaped distribution in the compressed coordinates. A GMM can represent a distribution whose individual features are not Gaussian, so this diagnostic does not prove the mixture assumptions fail. It illustrates why a lower-dimensional representation is not automatically easier to rank by density. Figure~\ref{fig:latent-short} shows overlap between genuine and fraud scores. H1 has ROC-AUC 0.9398 but test AP 0.1724, so good broad separation on the ROC curve does not imply good precision near the top of the review queue.
+
+\subsection{H2: Weighted combination of anomaly scores}
+H2 combines the DAE reconstruction score and stored ambient GMM score. Because the two scores have different ranges, we compare min--max, z-score, log plus z-score, and rank-based normalization. We also compare weighted, maximum and rank-average fusion. The weighted score is
+\begin{equation}
+s_{\mathrm{H2}}=\alpha s_{\mathrm{DAE}}^{\mathrm{norm}}
+ +(1-\alpha)s_{\mathrm{GMM}}^{\mathrm{norm}}.
+\end{equation}
+We choose the weight using validation AP. The official weighted form uses $\alpha=1$, giving the GMM no weight. The official H2 ranking is consequently the same as DAE, with test AP 0.4818. We discuss separate fusion-rule checks in Section~\ref{sec:round-checks}.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.91\textwidth]{hybrid_fusion_sensitivity.png}
+\caption{Score-fusion sensitivity. The official H2 result uses the weighted score selected on validation with all weight on DAE. Test curves are descriptive.}
+\label{fig:fusion-sensitivity-short}
+\end{figure*}
+
+\subsection{H3: DAGMM-lite}
+H3 keeps the same 12 codes as H1 and adds three reconstruction-error features. These are the MSE in Eq.~\eqref{eq:mse-short}, a relative Euclidean error, and a cosine distance. The latter two capture error size relative to input size and the change in direction between input and reconstruction:
+\begin{align}
+e_{\mathrm{rel}} &= \frac{\|x-\hat{x}\|_2}{\|x\|_2+\epsilon},\\
+e_{\mathrm{cos}} &= 1-\frac{x^\top\hat{x}}
+ {\|x\|_2\|\hat{x}\|_2+\epsilon}.
+\end{align}
+The small $\epsilon$ guards against a zero denominator. We standardize the resulting 15 inputs using genuine training data, fit a GMM, and score each payment with its negative log likelihood under that mixture. The grid checks component counts 2, 4, 8 and 16, diagonal and tied covariance, and regularization 0.01 and 0.1. Validation selects 16 diagonal components and regularization 0.1. Test AP is 0.4541.
+
+H3 outperforms H1 in the official comparison. This is consistent with reconstruction errors carrying clues lost in the code alone, although the mixtures also differ in selected settings. The name DAGMM-lite reflects the staged fitting. Full DAGMM would train the encoder and mixture-estimation network jointly. We do not measure that alternative in this study.
+
+\section{Results and Ablations}
+
+\begin{table*}[t]
+\centering
+\caption{Ten-model comparison. Recall columns use the stated test FPR on the ROC curve. Table~\ref{tab:frozen_policy} reports validation-derived thresholds.}
+\label{tab:master_benchmark_10}
+\scriptsize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lcccccccc}
+\toprule
+\textbf{Model} & \textbf{Phase} & \textbf{Val. AP} & \textbf{Test AP} & \textbf{Test AP 95\% CI} & \textbf{Test ROC-AUC} & \textbf{Rec.@0.1\%} & \textbf{Rec.@0.5\%} & \textbf{Prec.@100} \\
+\midrule
+PCA Reconstruction Error & P1 & \textbf{0.7066} & \textbf{0.7425} & [0.6415, 0.8368] & 0.9303 & \textbf{76.00\%} & 77.33\% & \textbf{57.0\%} \\
+Denoising Autoencoder ($\sigma=0.2$) & P2 & 0.2935 & \textbf{0.4818} & [0.3707, 0.6166] & 0.9322 & 70.67\% & 77.33\% & 53.0\% \\
+Hybrid H2: Score Fusion & P2 & 0.2935 & \textbf{0.4818} & [0.3707, 0.6166] & 0.9322 & 70.67\% & 77.33\% & 53.0\% \\
+Hybrid H3: DAGMM-lite & P2 & 0.3913 & \textbf{0.4541} & [0.3524, 0.5884] & 0.9127 & 68.00\% & \textbf{80.00\%} & 48.0\% \\
+Local Outlier Factor & P1 & 0.4069 & 0.4478 & [0.3447, 0.5822] & 0.9048 & 65.33\% & 72.00\% & 47.0\% \\
+Standard Deep Autoencoder & P2 & 0.2272 & 0.3574 & [0.2618, 0.4848] & 0.9021 & 53.33\% & 68.00\% & 40.0\% \\
+Stored Ambient GMM & P1 & 0.1038 & 0.2679 & [0.1843, 0.3800] & 0.9391 & 33.33\% & 66.67\% & 31.0\% \\
+Hybrid H1: Latent GMM ($d_z=12$) & P2 & 0.1159 & 0.1724 & [0.1329, 0.2310] & 0.9398 & 24.00\% & 74.67\% & 30.0\% \\
+One-Class SVM (RBF kernel) & P1 & 0.0613 & 0.1322 & [0.1030, 0.1784] & \textbf{0.9604} & 0.00\% & 69.33\% & 16.0\% \\
+Isolation Forest (100 trees) & P1 & 0.0330 & 0.0577 & [0.0444, 0.0787] & 0.9567 & 1.33\% & 34.67\% & 7.0\% \\
+\bottomrule
+\end{tabular}%
+}
+\end{table*}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{final_phase2_pr_curves.png}
+\caption{Precision-Recall curves comparing all Phase 1 and Phase 2 models on the untouched chronological test set. The dashed gray line indicates the random baseline ($\text{base rate} = 0.1317\%$).}
+\label{fig:final_pr_curves}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{final_phase2_recall_at_fpr.png}
+\caption{Test recall under thresholds derived from legitimate validation scores. The legend gives validation FPR targets. Realized test FPR can differ.}
+\label{fig:final_recall_bars}
+\end{figure}
+
+\begin{table}[t]
+\centering
+\caption{Held-out workload using the 0.5\% validation FPR target}
+\label{tab:frozen_policy}
+\begin{tabular}{lrrr}
+\toprule
+Model & Fraud caught & False alerts & Test FPR \\
+\midrule
+PCA & 58/75 & 332 & 0.584\% \\
+Stored GMM & 46/75 & 196 & 0.345\% \\
+AE & 50/75 & 259 & 0.455\% \\
+DAE / H2 & 58/75 & 186 & 0.327\% \\
+H1 & 53/75 & 206 & 0.362\% \\
+H3 & 59/75 & 197 & 0.346\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Ranking and review workload}
+Table~\ref{tab:master_benchmark_10} compares the ten models and Fig.~\ref{fig:final_pr_curves} shows their precision--recall curves. PCA is first at 0.7425 AP and 57\% precision among 100 alerts. The selected DAE and H2 reach 0.4818 AP and 53\% precision at 100. H3 places fewer frauds in the top 100 (48\%) than the DAE, despite catching more at the 0.5\% test ROC point. A model that does well at one operating point can therefore do worse at another.
+
+The submitted Phase~1 report gives GMM test AP of 0.4142. The stored ambient GMM score arrays used for the Phase~2 comparison give 0.2679. The paired comparisons use the latter arrays. The DAE minus stored GMM difference is 0.2139 AP, with paired 95\% CI [0.1177, 0.3124]. For H3 minus stored GMM it is 0.1861 [0.0897, 0.2882]. These results compare the scores actually available in Phase~2. They depend on input representation as well as the scoring method.
+
+Table~\ref{tab:frozen_policy} gives the test workload at the 0.5\% validation target. H3 catches 59 frauds with 197 false alarms, for 256 reviews and 0.346\% realized test FPR. The DAE catches 58 frauds with 186 false alarms, for 244 reviews and 0.327\% realized FPR. The difference is one additional fraud and 11 additional false alarms in aggregate. It does not mean the two review queues contain the same transactions. PCA catches 58 at that validation target but generates 332 false alarms. With a strict queue of 100, PCA instead has the strongest result. Figure~\ref{fig:final_recall_bars} compares recalls at the fixed validation thresholds. H3's 80\% recall in the ROC table is a different calculation: it corresponds to 60 frauds at the 0.5\% point on the test ROC curve.
+
+At the tighter 0.1\% validation target, DAE catches 33 frauds with 22 false alarms. The stored GMM catches 25 with 53 false alarms. This supports using both the ranking table and workload counts to discuss whether a model is useful at the intended review capacity. The repository retains all 30 model/threshold combinations, including false alarm counts, realized FPR and precision.
+
+
+\begin{table}[t]
+\centering
+\caption{True frauds / false alarms at three validation targets on test}
+\label{tab:budget-sweep-short}
+\small
+\begin{tabular}{lrrr}
+\toprule
+Validation target & PCA & DAE & H3 \\
+\midrule
+0.1\% & 57 / 84 & 33 / 22 & 50 / 54 \\
+0.5\% & 58 / 332 & 58 / 186 & 59 / 197 \\
+1.0\% & 58 / 692 & 58 / 433 & 60 / 421 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:budget-sweep-short} shows how the threshold changes the relative results. At the three reported validation targets, PCA gains only one further fraud as false alerts rise from 84 to 692. Relaxing the DAE target from 0.5\% to 1\% adds false alarms without finding another fraud in this test. A stricter target might be useful when reviews are costly, but the right rule depends on reviewer capacity and on the consequences of missed fraud. We report raw alert counts to make those trade-offs visible.
+
+\subsection{What the alternate runs tell us}
+\begin{table}[t]
+\centering
+\caption{Selected autoencoder checks, measured by AP}
+\label{tab:checked-variants}
+\small
+\begin{tabular}{lrr}
+\toprule
+Run & Validation & Test \\
+\midrule
+AE, official base inputs & 0.2272 & 0.3574 \\
+AE, engineered inputs & 0.2535 & 0.3724 \\
+DAE, official base inputs & 0.2935 & 0.4818 \\
+DAE, engineered inputs & 0.5617 & 0.5213 \\
+AE, five base-input seeds & $0.269\pm0.132$ & $0.395\pm0.091$ \\
+DAE, five base-input seeds & $0.279\pm0.169$ & $0.393\pm0.143$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textit{Noise and capacity.} The official DAE scores above the standard AE, but the selected architectures differ in width as well as training noise. The comparison cannot attribute the full gain to noise. A separate AE bottleneck sweep over 2, 4, 8 and 16 reaches its highest validation AP at width 8 (0.3252), while widths 2 and 16 score 0.0429 and 0.1282 in that sweep. It explores sensitivity at fixed experimental conditions. The official AE and DAE use widths 12 and 16.
+
+\textit{Features and regularization.} Engineered-input variants improve AP in the recorded diagnostic runs (Table~\ref{tab:checked-variants}). The headline comparison uses the official base-input neural scores. The experiments also test activation, dropout, weight decay, batch normalization and latent sparsity. In the separate width-8 regularization experiment, L1 sparsity gives 0.3017 validation AP compared with 0.2943 for the unregularized version. Dropout 0.2 gives 0.0462. These are effects measured in that configuration, not a recommendation to change the official models after seeing test results.
+
+\textit{Density and fusion.} Covariance type, component count, regularization and random seed alter the fitted GMM. H1's BIC and AP selections show that describing genuine codes well is a different goal from ranking fraud. The H2 weight sweep selects DAE alone, and H3's gain over H1 motivates measuring the error features in a controlled follow-up. The five-seed runs only vary initialization and stochastic training on the same training split. They do not vary training size.
+
+\section{Technical Checks}
+\label{sec:round-checks}
+We used three checks to separate data-preparation problems from detector performance. First, the split and scaler checks verify that fitting sees no fraud rows, that the scaler statistics match genuine training data, and that the latest training time does not cross the start of validation. A tie at the boundary is possible because the split is by sorted row order. Second, score-contract checks verify that each split has one finite score per payment and that larger values consistently mean a stronger alert. The shared evaluator uses the same row order as the saved scores.
+
+Third, we checked the reconstruction signal independently from the full ranking. At code width 8, the linear autoencoder and exact PCA give genuine validation MSE of 0.9031 and 0.9122, respectively, and their reconstruction scores have Pearson correlation 0.9933. This check uses a matched linear setup. It does not mean the nonlinear networks in the main table equal the selected PCA detector. For the recorded batch diagnostic, fraud-to-genuine MSE ratios are 10.99 for the standard AE and 15.59 for the DAE, with no nonfinite gradient values recorded. These batch measurements indicate a reconstruction gap in that check. AP measures ranking across the full test set. Figure~\ref{fig:ae-errors-short} shows why a single reconstruction cutoff still produces missed frauds and false alerts. The plot also makes clear that comparing average errors alone cannot tell us how many cases an investigator will see.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.47\textwidth]{ae_error_histogram.png}\hfill
+\includegraphics[width=0.47\textwidth]{ae_dae_error_histogram.png}
+\caption{Validation reconstruction-error distributions for the standard AE (left) and DAE (right). Genuine and fraudulent examples can receive similar errors, so the score remains a review signal.}
+\label{fig:ae-errors-short}
+\end{figure*}
+
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.91\textwidth]{latentgmm_stability_comparison.png}
+\caption{Sensitivity checks for ambient and latent GMMs. Numerical stability and separation across a ranking are different properties. The settings in these checks need not reproduce the official score arrays.}
+\label{fig:latent-stability-short}
+\end{figure*}
+
+The mixture stability checks vary regularization and repeat fits across seeds (Fig.~\ref{fig:latent-stability-short}). For example, the 31-dimensional, full-covariance diagnostic at 12 components has mean condition number about $5.27\times10^7$ at regularization $10^{-7}$, falling to about $1.05\times10^3$ at $10^{-2}$. A large condition number signals a fit that can be sensitive to small changes. Better conditioning does not establish that the density scores put fraud at the top. The H1 results provide a direct counterexample to using numerical stability as the only selection criterion.
+
+
+Figure~\ref{fig:fusion-sensitivity-short} summarizes sensitivity to the weighted combination. The separate maximum-fusion check reaches 0.3017 validation AP and 0.4874 test AP, compared with 0.2935 and 0.4818 for weighted H2. This modest difference belongs to the diagnostic rule comparison. The main results retain the official weighted configuration. At 100 reviews, maximum fusion yields 52\% precision versus 53\% for DAE, so its higher diagnostic AP does not establish a better queue at that capacity.
+
+To reproduce the official comparison from saved scores, run \texttt{python -m src.final\_phase2} and inspect the final comparison and threshold tables. The final comparison notebook reproduces the plots and the fixed-threshold calculation. For retraining, the code defines the separate AE, latent mixture, fusion and augmented mixture stages. An experiment that changes inputs or scores should use a distinct run so the stored baseline comparison can be reproduced.
+
+\section{Discussion and Limitations}
+PCA provides the strongest overall ranking in this benchmark. The published inputs already derive from a PCA transformation, and a linear reconstruction can retain the directions that describe common genuine transactions. A flexible neural model can also reconstruct some unusual inputs well. These are plausible explanations, not established causes of PCA's lead. The comparison does show why a strong classical baseline is worth keeping when evaluating a more complex neural model.
+
+H1 illustrates the difference between compression and fraud detection. The encoder can discard a direction in which fraud differs from legitimate behavior, and a GMM cannot recover information the code no longer contains. Conversely, a rare latent pattern can belong to a genuine payment. H3 gives the mixture both the code and measures of what the decoder could not copy. Its workload trade-off is useful at the tested operating point, while DAE still has better AP and top-100 precision. No cost preference or universal deployment cutoff follows from these results.
+
+Only two days are observed. The validation and test sets contain 57 and 75 frauds, so the comparison is sensitive to which cases occur in those periods. The data omit merchant and cardholder identifiers. We cannot measure drift over longer periods, test unseen customers explicitly, or calibrate a policy to a particular bank's reviewer costs. Some diagnostic tables show test values for several candidates. The headline configurations follow the stated validation selection. A longer chronological study with richer features and a pre-specified comparison could test whether the ranking and workload differences hold.
+
+\section{Conclusion}
+PCA remains the strongest overall ranking on the shared split. The official DAE improves on the standard autoencoder and the stored ambient GMM. H1 shows the limits of density on a compressed code, while H2 shows that the additional GMM score does not improve the selected DAE ranking. H3 illustrates a practical choice at the 0.5\% validation target: one more fraud caught than DAE, at the cost of 11 more false alarms. Reporting both ranking and workload keeps those conclusions distinct.
+
+\section{Individual Contributions}
+\textbf{Kushal Sarkar} integrated the pipeline and ran the final evaluation. \textbf{Krishna Pramod Dubale} reviewed prior work and validated the deep-learning data pipeline. \textbf{Apoorva Choudhary} implemented H1 and analysed the latent mixtures. \textbf{Vani Rudra} built and evaluated the autoencoders. \textbf{Prachee Dhar} built H2 and H3 and led the ablation and alert-overlap analyses.
+
+\bibliographystyle{IEEEtran}
+\bibliography{refs_phase2}
+\end{document}
