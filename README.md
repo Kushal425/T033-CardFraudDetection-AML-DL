@@ -60,6 +60,16 @@ AP is average precision, labeled PR-AUC in the code. At the 0.5% validation targ
 - [Test precision–recall curves](results/figures/final_phase2_pr_curves.png)
 - [Recall under fixed validation thresholds](results/figures/final_phase2_recall_at_fpr.png)
 
+## Team members and contributions
+
+| Team member | Enrollment no. | Phase 1 · Classical machine learning | Phase 2 · Deep learning and hybrid models |
+|---|---|---|---|
+| Kushal Sarkar | 2401020033 | Set up the project and implemented data loading, chronological splits, and shared metrics. Integrated the Phase 1 results and report. | Integrated the model pipelines, ran the ten-model comparison and paired bootstrap tests, and coordinated the final report. |
+| Prachee Dhar | 2401010330 | Reviewed related work and explored the data, checking duplicates, class imbalance, and changes over time. | Built H2 score fusion and H3 DAGMM-lite. Compared alert overlap and tested how model settings affected results. |
+| Apoorva Choudhary | 2401010092 | Designed input features and tested GMM settings using AIC, BIC, and validation results. Studied when fitting became unstable. | Built H1, the Gaussian mixture on autoencoder codes. Tested covariance choices and studied why some frauds received low scores. |
+| Vani Rudra | 2401010490 | Built and evaluated the PCA, Local Outlier Factor, One-Class SVM, and Isolation Forest baselines. | Trained the standard and denoising autoencoders on genuine payments. Compared five random starts and profiled scoring time. |
+| Krishna Pramod Dubale | 2401010239 | Built the evaluation toolkit for alert thresholds, confidence intervals, and review costs. Assembled the comparison table. | Reviewed deep-learning research and checked time-based splits, feature scaling, and how genuine validation rows were used to stop training. |
+
 ## Submission materials
 
 - [Phase 2 IEEE report PDF](reports/T033_Phase2_IEEE_Report.pdf) and [Phase 2 IEEE LaTeX source](reports/ieee_report/main_phase2.tex) and [bibliography](reports/ieee_report/refs_phase2.bib)
