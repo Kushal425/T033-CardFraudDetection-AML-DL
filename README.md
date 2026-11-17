@@ -73,6 +73,6 @@ AP is average precision, labeled PR-AUC in the code. At the 0.5% validation targ
 ## Submission materials
 
 - [Phase 2 IEEE report PDF](reports/T033_Phase2_IEEE_Report.pdf) and [Phase 2 IEEE LaTeX source](reports/ieee_report/main_phase2.tex) and [bibliography](reports/ieee_report/refs_phase2.bib)
-- [Phase 2 presentation](docs/T033_Phase2_Presentation.pptx)
+- [Phase 2 presentation](docs/T033_Phase2_Presentation.pdf)
 - [Contributions](CONTRIBUTIONS.md)
 - [Phase 1 report](reports/T033_Phase1_IEEE_Report.pdf) and [slides](docs/T033_Phase1_Presentation_Slides.pdf)
