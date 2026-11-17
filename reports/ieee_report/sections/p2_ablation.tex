@@ -5,19 +5,19 @@
 \section{Ablation Study}
 \label{sec:p2_ablation}
 
-We conduct a systematic ablation study across eight factors spanning deep autoencoder design, GMM density model structure, feature representation, and hybrid fusion choices. All hyperparameter and design decisions are made exclusively on validation PR-AUC; test results are reported once per selected configuration to prevent test-set leakage.
+We conduct a systematic ablation study across eight factors spanning deep autoencoder design, GMM density model structure, feature representation, and hybrid fusion choices. The recorded selection rules use validation average precision. Some diagnostic tables show test results for several candidates.
 
 % ─── A1: AE vs DAE ───────────────────────────────────────────────────────────
 \subsection{A1: Denoising Regularization (AE vs.\ DAE)}
 \label{sec:abl_ae_dae}
 
-Adding Gaussian denoising noise ($\sigma = 0.2$) during training improves validation PR-AUC from 0.2272 (AE) to 0.2935 (DAE)—a relative gain of $+29.2\%$—while test PR-AUC increases from 0.3574 to 0.4818 ($+34.8\%$). Denoising acts as a stochastic regularizer, preventing the encoder from memorizing trivial identity mappings and forcing the latent manifold to represent only the smooth normal-data structure~\cite{vincent2010stacked}. Recall at 0.5\% FPR improves from 0.667 to 0.773 on validation. The DAE configuration is therefore selected for all downstream hybrid experiments.
+Adding Gaussian denoising noise ($\sigma = 0.2$) during training improves validation PR-AUC from 0.2272 (AE) to 0.2935 (DAE)---a relative gain of $+29.2\%$---while test PR-AUC increases from 0.3574 to 0.4818 ($+34.8\%$). Denoising acts as a stochastic regularizer, preventing the encoder from memorizing trivial identity mappings and forcing the latent manifold to represent only the smooth normal-data structure~\cite{vincent2010stacked}. Test ROC recall at 0.5\% FPR changes from 0.680 to 0.773. H2 uses DAE scores. H1 and H3 use the standard AE checkpoint.
 
 % ─── A2: Latent Dimension ─────────────────────────────────────────────────────
 \subsection{A2: Latent Bottleneck Dimension}
 \label{sec:abl_latent_dim}
 
-We sweep latent dimensions $k \in \{2, 4, 8, 16\}$ under the AE architecture. Validation PR-AUC peaks at $k=8$ (0.3252), declining at both smaller ($k=2$: 0.0429, insufficient capacity) and larger ($k=16$: 0.1282, possible over-generalization). The final DAE model uses $k=12$ (empirically selected from the full hyperparameter sweep: Table~\ref{tab:p2_hyperparam_search}), achieving val PR-AUC = 0.4610. These results confirm the importance of an intermediate bottleneck: overly small latent spaces lose meaningful variance, while overly large spaces allow the decoder to trivially memorize and reduce the reconstruction signal for fraud detection.
+We sweep latent dimensions $k \in \{2, 4, 8, 16\}$ under the AE architecture. Validation PR-AUC peaks at $k=8$ (0.3252), declining at both smaller ($k=2$: 0.0429, insufficient capacity) and larger ($k=16$: 0.1282, possible over-generalization). The official DAE uses a 16-dimensional bottleneck. The official standard AE has 12 latent dimensions. These results confirm the importance of an intermediate bottleneck: overly small latent spaces lose meaningful variance, while overly large spaces allow the decoder to trivially memorize and reduce the reconstruction signal for fraud detection.
 
 % ─── A3: Feature Set ─────────────────────────────────────────────────────────
 \subsection{A3: Input Feature Set}
@@ -29,57 +29,35 @@ Comparing the standard 31-dimensional \texttt{base} feature set (PCA-transformed
 \subsection{A4 \& A5: GMM Covariance Structure and Component Count}
 \label{sec:abl_gmm}
 
-For the Phase~1 GMM and the DAGMM-lite grid search, we ablate covariance type $\in \{\text{diag, tied, full}\}$ and $K \in \{2, 4, 8, 12, 16\}$. In Phase~1 ambient-space GMM: full-covariance configurations with large $K$ consistently overfit (GMM val PR-AUC peaks at 0.195 for best-selected config). For DAGMM-lite on the 15-dimensional augmented representation $v = [z, e]$: diagonal and tied covariances outperform full-covariance at comparable $K$ due to the reduced parameter-to-sample ratio, and $K=8$ with tied covariance achieves the best validation PR-AUC. The regularization coefficient $\epsilon_{\text{cov}} = 0.01$ is preferred over $0.1$ (too much shrinkage) and $0.001$ (numerical instability in some runs). These results parallel the Phase~1 GMM findings: dimensionality reduction remains a prerequisite for stable GMM fitting.
+The ambient GMM sweep explores covariance structure, component count, and regularization. For DAGMM-lite, the 15-dimensional representation is evaluated using diagonal and tied covariance, component counts $K\in\{2,4,8,16\}$, and regularization in $\{0.01,0.1\}$. The best validation AP (0.3913) uses diagonal covariance, $K=16$, and regularization 0.1.
 
 % ─── A6: Training Data Size ──────────────────────────────────────────────────
 \subsection{A6: Training Data Size and Seed Stability}
 \label{sec:abl_training_size}
 
-The dataset provides 170,524 legitimate training records. We assess sensitivity to training randomness via 5-seed experiments (seeds $\{42, 123, 456, 789, 1234\}$). The DAE exhibits seed-mean val PR-AUC = $0.342 \pm 0.148$ (mean $\pm$ std) and seed-mean test PR-AUC = $0.471 \pm 0.078$, confirming that the fixed-seed selected model (seed=42, DAE val = 0.4610) lies near the upper envelope of the seed distribution. The large inter-seed variance (std = 0.148) underscores sensitivity to random initialization in the AE training, particularly because only 57 validation frauds provide a sparse PR-AUC gradient. Future work should explore ensembles across seeds to reduce this variance. The AE shows similar pattern (5-seed val mean = $0.236 \pm 0.147$), confirming that denoising provides consistent, not seed-specific, benefit.
+The five seeds are $\{42,123,456,789,1024\}$. On the full legitimate training partition, DAE test AP is $0.393\pm0.143$ and AE test AP is $0.395\pm0.091$ (mean and population standard deviation). The headline median-validation runs can differ from the mean across seeds. These experiments measure initialization sensitivity at one training size.
 
 % ─── A7: Fusion Method and Weight ─────────────────────────────────────────────
 \subsection{A7: Fusion Method and Fusion Weight}
 \label{sec:abl_fusion}
 
-We compare three fusion methods (weighted, max, rank-average) under four normalization strategies. The weight sensitivity sweep (Figure~\ref{fig:p2_fusion_sensitivity}) shows that all normalization methods monotonically increase validation PR-AUC as $\alpha \to 1.0$ (pure DAE score), consistent with GMM's low standalone discriminability on validation (PR-AUC = 0.1038). Fusion method comparison (Table~\ref{tab:p2_fusion_methods}) shows max and rank-average fusion produce marginally lower PR-AUC than weighted fusion with $\alpha = 1.0$, likely because they force GMM to dilute DAE's signal even when GMM is dominated by noise. The finding is methodologically important: \textbf{fusion is only beneficial when both component scores are sufficiently discriminative}; here, the Phase~1 GMM trained on 31-dimensional ambient space is too weak to contribute positively.
+We compare three fusion methods (weighted, max, rank-average) under four normalization strategies. The weight sensitivity sweep (the repository fusion sensitivity figure) shows that all normalization methods monotonically increase validation PR-AUC as $\alpha \to 1.0$ (pure DAE score), consistent with GMM's low standalone discriminability on validation (PR-AUC = 0.1038). Fusion method comparison (the repository fusion methods table) shows max and rank-average fusion produce marginally lower PR-AUC than weighted fusion with $\alpha = 1.0$, likely because they force GMM to dilute DAE's signal even when GMM is dominated by noise. The finding is methodologically important: \textbf{fusion is only beneficial when both component scores are sufficiently discriminative}; here, the Phase~1 GMM trained on 31-dimensional ambient space is too weak to contribute positively.
 
 % ─── A8: Hybrid vs Standalone ─────────────────────────────────────────────────
-\subsection{A8: Hybrid vs.\ Standalone — Master Comparison}
+\subsection{A8: Hybrid vs.\ Standalone --- Master Comparison}
 \label{sec:abl_master}
 
-Table~\ref{tab:p2_master_eval} summarizes test-set performance for all 10 models across Phase~1 and Phase~2. Key findings:
+Table~\ref{tab:master_benchmark_10} summarizes test-set performance for all 10 models across Phase~1 and Phase~2. Key findings:
 
 \begin{enumerate}
     \item \textbf{PCA Anomaly Score remains the top Phase~1 model} (Test PR-AUC = 0.7425), confirming linear manifold residuals as highly effective on PCA-compressed features.
-    \item \textbf{DAE (H2 baseline, $\alpha=1.0$) is the top Phase~2 DL model} at 0.4818, substantially above Phase~1 GMM (0.4142) and LOF (0.4478).
-    \item \textbf{DAGMM-lite (H3)} achieves 0.4541 and the highest Recall@0.5\% FPR (0.800) among all Phase~2 models—a critical operational metric for investigators with fixed review capacity.
-    \item \textbf{Latent GMM (H1)} underperforms all models (0.1724), confirming that the latent space alone does not provide sufficient density discrimination.
+    \item \textbf{DAE (H2 baseline, $\alpha=1.0$) is the top Phase~2 DL model} at 0.4818, substantially above the stored ambient GMM (0.2679) and LOF (0.4478).
+    \item \textbf{DAGMM-lite (H3)} achieves 0.4541 and the highest recall at the 0.5\% point of the test ROC curve (0.800).
+    \item \textbf{Latent GMM (H1)} trails both reconstruction models (0.1724), confirming that the latent space alone does not provide sufficient density discrimination.
     \item \textbf{None of the Phase~2 DL models surpass PCA Anomaly Score}, suggesting that the PCA residual captures a strong linear anomaly signal for this dataset, and that more sophisticated deep models would benefit from architectural exploration beyond undercomplete MLPs (e.g., convolutional or transformer encoders with temporal structure).
 \end{enumerate}
 
-\begin{table}[t]
-\centering
-\caption{Master Evaluation: Phase 1 \& 2 Models on Test Set (Chronological Split). Best in class \textbf{bold}. CI = 95\% bootstrap.}
-\label{tab:p2_master_eval}
-\footnotesize
-\begin{tabular}{lcccc}
-\toprule
-\textbf{Model} & \textbf{Test PR-AUC} & \textbf{95\% CI} & \textbf{Rec@0.5\%} & \textbf{Prec@100} \\
-\midrule
-\textbf{P1: PCA Anomaly}        & \textbf{0.7425} & [0.6415, 0.8368] & \textbf{0.773} & \textbf{0.530} \\
-P1: LOF                         & 0.4478          & [0.3447, 0.5822] & 0.720          & 0.400 \\
-P1: GMM (ambient)               & 0.4142          & [0.3050, 0.5403] & 0.693          & 0.300 \\
-P1: OC-SVM                      & 0.1322          & [0.1030, 0.1784] & 0.693          & 0.400 \\
-P1: Isolation Forest            & 0.0577          & [0.0444, 0.0787] & 0.347          & 0.100 \\
-\midrule
-P2: AE                          & 0.3574          & —                & 0.680          & 0.400 \\
-P2: DAE (= H2 $\alpha=1$)       & 0.4818          & [0.3707, 0.6166] & 0.773          & 0.530 \\
-P2: H1 Latent GMM               & 0.1724          & —                & 0.747          & 0.300 \\
-P2: H2 Score Fusion             & 0.4818          & [0.3707, 0.6166] & 0.773          & 0.530 \\
-\textbf{P2: H3 DAGMM-lite}      & 0.4541          & [0.3524, 0.5884] & \textbf{0.800} & 0.470 \\
-\bottomrule
-\end{tabular}
-\end{table}
+The master table in Section~\ref{sec:master_synthesis} uses the saved score arrays consistently across all ten models. The threshold-policy table gives the associated review workload at a validation-defined target.
 
 \subsection{Limitations and Failure Analysis}
 \label{sec:abl_limitations}
@@ -89,5 +67,5 @@ P2: H2 Score Fusion             & 0.4818          & [0.3707, 0.6166] & 0.773    
     \item \textbf{Sparse validation fraud count:} Only 57 validation frauds (0.1\% base rate) make PR-AUC estimates noisy and sensitive to seed. The 95\% CI for DAE spans [0.37, 0.62], a 0.25-wide interval.
     \item \textbf{DAGMM-lite is not full DAGMM:} End-to-end joint training with the energy regularization objective (Equation~\ref{eq:dagmm_full_loss}) was not implemented. The decoupled pipeline foregoes the feedback from GMM to encoder training, which is the core innovation of~\cite{zong2018deep}.
     \item \textbf{PCA dominance:} The Phase~1 PCA Anomaly Score (0.7425 test PR-AUC) outperforms all Phase~2 models by a large margin (95\% CI non-overlapping), confirming that the PCA basis strongly captures the legitimate data manifold for this dataset, making it a hard-to-beat linear baseline.
-    \item \textbf{No temporal modeling:} All models treat transactions as independent. The sequential nature of fraud—patterns that evolve over time—is unexploited. Recurrent or attention-based encoders may improve detection.
+    \item \textbf{No temporal modeling:} All models treat transactions as independent. The sequential nature of fraud---patterns that evolve over time---is unexploited. Recurrent or attention-based encoders may improve detection.
 \end{itemize}

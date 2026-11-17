@@ -227,7 +227,6 @@ def chronological_split(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, p
                 f"(< {_MIN_FRAUD}).\n"
                 f"Threshold estimates and PR-AUC confidence intervals will be\n"
                 f"unstable.  Consider changing to 60/15/25 split in config.\n"
-                f"Document the final decision in docs/data_card.md.\n"
                 f"{'='*60}",
                 stacklevel=2,
             )

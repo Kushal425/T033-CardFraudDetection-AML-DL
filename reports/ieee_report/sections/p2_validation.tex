@@ -5,24 +5,24 @@
 \section{Technical Validation and Evaluation Protocol}
 \label{sec:p2_validation}
 
-This section reports the technical sanity checks, evaluation protocol details, and threshold policy for all Phase~2 models. All selections use validation data only; test labels were accessed once for final reporting.
+This section reports the technical sanity checks, evaluation protocol details, and threshold policy for all Phase~2 models. The recorded model-selection criteria use validation statistics. Diagnostic sweeps also report test metrics for multiple configurations.
 
 % ─── Evaluation Protocol ─────────────────────────────────────────────────────
 \subsection{Evaluation Protocol and Anti-Leakage Controls}
 \label{sec:p2_eval_protocol}
 
 \paragraph{Chronological split.}
-All models use the same chronological train/val/test split (by transaction time): train legit 170,524 records ($t \le 120{,}396$ s), val 56,961 records ($120{,}396 < t \le 145{,}247$ s, 57 frauds), test 56,962 records ($t > 145{,}248$ s, 75 frauds). No shuffling crosses split boundaries. All normalization, GMM fitting, and AE training use training-set statistics only; validation and test statistics are never used to fit any parameter.
+All models use the same chronological train/val/test split (by transaction time): train legit 170,524 records ($t \le 120{,}396$ s), val 56,961 records ($120{,}396 < t \le 145{,}247$ s, 57 frauds), test 56,962 records ($t > 145{,}248$ s, 75 frauds). No shuffling crosses split boundaries. Feature scaling, model fitting, and H3 representation scaling use legitimate training data. H2 normalizes scores using validation reference statistics.
 
 \paragraph{Validation-only selection.}
-Model hyperparameters (latent dim, $K$, covariance type, $\epsilon_{\text{cov}}$, fusion weight $\alpha$, noise level $\sigma$) are selected exclusively by validation PR-AUC. Test scores are computed with the frozen, fully-specified model once per configuration after selection is complete.
+Model hyperparameters (latent dim, $K$, covariance type, $\epsilon_{\text{cov}}$, fusion weight $\alpha$, noise level $\sigma$) are selected exclusively by validation PR-AUC. AE and DAE use validation-legitimate loss for early stopping and report the median validation-AP seed. Several sweep tables include test metrics for multiple configurations, so the record cannot establish a single sealed test evaluation.
 
 \paragraph{Evaluation metrics.}
 We report:
 \begin{itemize}
   \item \textbf{PR-AUC}: Primary metric; threshold-free, appropriate for imbalanced detection (0.1\% base rate). 95\% bootstrap CI reported ($n=1{,}000$ resamples, seed=42).
   \item \textbf{ROC-AUC}: Included for cross-method comparability; can be misleadingly high under severe imbalance.
-  \item \textbf{Recall@FPR}: Recall at 0.1\%, 0.5\%, and 1.0\% FPR corresponds to investigator queue sizes of $\approx57$, $\approx285$, $\approx570$ daily alerts per 56,961 transactions—operationally relevant capacities.
+  \item \textbf{Recall@FPR}: Test ROC recall describes the ranking at a given test FPR. Thresholds fit on legitimate validation rows estimate operational workload, with separate realized test FPR and alert counts.
   \item \textbf{Precision@K}: Top-K precision at $K \in \{50, 100, 200\}$; directly measures triage quality for a fixed investigator capacity.
   \item \textbf{Paired bootstrap difference}: Tests whether PR-AUC improvement of a hybrid over its standalone parent is statistically significant ($n=1{,}000$, 95\% CI includes zero = not significant).
 \end{itemize}
@@ -31,21 +31,23 @@ We report:
 \subsection{Seed Stability (5-Seed Experiment)}
 \label{sec:p2_seed_stability}
 
-Table~\ref{tab:p2_seed_stability} reports 5-seed mean and standard deviation for the AE and DAE, assessing robustness of learned representations to random initialization. The DAE achieves a consistently higher mean than AE across seeds but exhibits a large standard deviation (val PR-AUC std = 0.148) due to sparse validation fraud labels (57 events), which makes the PR-AUC landscape noisy. The best seed (42) results are used as official scores.
+Table~\ref{tab:p2_seed_stability} summarizes the five recorded runs. Across these seeds test AP varies substantially. The official AE and DAE files use the median seed ranked by validation AP.
 
 \begin{table}[t]
 \centering
 \caption{5-Seed Stability: Val and Test PR-AUC (mean $\pm$ std).}
 \label{tab:p2_seed_stability}
 \footnotesize
-\begin{tabular}{lcccc}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{lccc}
 \toprule
 \textbf{Model} & \textbf{Val PR-AUC} & \textbf{Test PR-AUC} & \textbf{n seeds} \\
 \midrule
-AE  & $0.236 \pm 0.147$ & $0.343 \pm 0.077$ & 5 \\
-DAE & $0.342 \pm 0.148$ & $0.471 \pm 0.078$ & 5 \\
+AE  & $0.269 \pm 0.132$ & $0.395 \pm 0.091$ & 5 \\
+DAE & $0.279 \pm 0.169$ & $0.393 \pm 0.143$ & 5 \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table}
 
 % ─── Gradient and Sanity Checks ──────────────────────────────────────────────
@@ -66,7 +68,7 @@ The following sanity checks confirm model integrity:
 \subsection{Paired Bootstrap Significance Testing}
 \label{sec:p2_paired_bootstrap}
 
-We use paired bootstrap differences to test whether hybrid models significantly improve over standalone parents (Table~\ref{tab:p2_paired_bootstrap}). Both H2 and H3 are tested against standalone AE and standalone GMM. With $\alpha^* = 1.0$, H2 is identical to DAE, so its difference from AE is positive and significant (delta PR-AUC = $+0.1244$, CI: [0.0238, 0.2287]). H3 also improves significantly over GMM (delta = $+0.0399$, CI includes 0 for some comparisons — see Table~\ref{tab:p2_paired_bootstrap} for exact values). None of the Phase~2 hybrids significantly outperform the PCA Anomaly Score benchmark (which dominates at 0.7425 test PR-AUC).
+The paired bootstrap resamples transactions jointly across model scores. Against the stored ambient GMM, H2 improves AP by 0.2139 (95\% CI [0.1177, 0.3124]) and H3 by 0.1861 (95\% CI [0.0897, 0.2882]). The selected H2 is a monotonic transformation of the DAE score, so the H2 comparison describes the same ranking.
 
 % ─── Runtime ──────────────────────────────────────────────────────────────────
 \subsection{Runtime and Scalability}
@@ -77,20 +79,22 @@ We use paired bootstrap differences to test whether hybrid models significantly 
 \caption{Training and Inference Runtime (CPU, Apple Silicon). AE/DAE trained for 100 epochs; PCA/GMM/etc. include sweep time.}
 \label{tab:p2_runtime}
 \footnotesize
+\resizebox{\columnwidth}{!}{%
 \begin{tabular}{lrrl}
 \toprule
 \textbf{Model} & \textbf{Train (s)} & \textbf{Infer 10k (s)} & \textbf{Note} \\
 \midrule
 PCA Anomaly Score        & 0.44   & $<0.01$ & Full sweep \\
-LOF                      & 4.42   & —       & Sweep incl. \\
-Isolation Forest         & 13.68  & —       & Sweep incl. \\
-OC-SVM                   & 58.08  & —       & Sweep incl. \\
+LOF                      & 4.42   & ---       & Sweep incl. \\
+Isolation Forest         & 13.68  & ---       & Sweep incl. \\
+OC-SVM                   & 58.08  & ---       & Sweep incl. \\
 AE (n=3,531 params)      & 29.87  & 0.0018  & Best seed \\
 DAE (n=2,895 params)     & 34.38  & 0.0014  & Best seed \\
 DAGMM-lite (K=16, diag)  & $\sim$70 & 0.0021 & Grid search included \\
 H2 Score Fusion          & $\approx0$ & $<0.001$ & Score combination only \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table}
 
 % ─── Threshold Policy ─────────────────────────────────────────────────────────

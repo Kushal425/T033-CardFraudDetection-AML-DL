@@ -11,11 +11,12 @@ Loads pre-computed score arrays from results/scores/ for all 10 models:
 
 Produces:
   - results/tables/final_comparison_phase2.csv  (master 10-model headline table)
+  - results/tables/final_thresholds_phase2.csv (validation cutoffs and test workload)
   - results/tables/paper_numbers_p2.tex         (LaTeX macros for paper numbers)
   - results/figures/final_phase2_pr_curves.png   (all 10 models PR curves)
   - results/figures/final_phase2_recall_at_fpr.png (recall at operational FPRs)
 
-All numbers are derived directly from empirical scores — zero fabrication.
+Ranking metrics use stored scores. Threshold policies are fitted on validation.
 """
 
 from __future__ import annotations
@@ -43,7 +44,9 @@ from src.metrics import (
     recall_at_k,
     roc_auc,
 )
-from src.evaluation import bootstrap_ci, paired_bootstrap_diff
+from src.config import CFG
+from src.data import chronological_split, load_raw
+from src.evaluation import bootstrap_ci, threshold_policies_fpr
 
 ALL_MODELS = [
     # Phase 1 classical baselines
@@ -89,8 +92,13 @@ MODEL_COLORS = {
 
 def load_labels() -> tuple[np.ndarray, np.ndarray]:
     """Load binary ground-truth labels for validation and test splits."""
-    val_df = pd.read_csv(ROOT / "data/processed/val.csv", index_col=0)
-    test_df = pd.read_csv(ROOT / "data/processed/test.csv", index_col=0)
+    split_dir = ROOT / CFG["paths"]["processed"]
+    val_path, test_path = split_dir / "val.csv", split_dir / "test.csv"
+    if not val_path.is_file() or not test_path.is_file():
+        _, val_df, test_df = chronological_split(load_raw())
+    else:
+        val_df = pd.read_csv(val_path, usecols=["Class"])
+        test_df = pd.read_csv(test_path, usecols=["Class"])
     return val_df["Class"].values, test_df["Class"].values
 
 
@@ -111,12 +119,17 @@ def run_master_comparison() -> pd.DataFrame:
     y_val, y_test = load_labels()
     s_val = load_scores("val")
     s_test = load_scores("test")
+    for split, labels, scores in [("val", y_val, s_val), ("test", y_test, s_test)]:
+        for model, values in scores.items():
+            if values.shape != labels.shape or not np.isfinite(values).all():
+                raise ValueError(f"Invalid {split} scores for {model}: expected {labels.shape}")
 
-    fpr_budgets = [0.001, 0.005, 0.010]
+    fpr_budgets = CFG["eval"]["fpr_budgets"]
     cap_budgets = [0.001, 0.005, 0.010]
     k_reviews = [50, 100, 200]
 
     rows = []
+    policies = []
     print("Computing metrics and bootstrap confidence intervals for all 10 models...")
 
     for m in ALL_MODELS:
@@ -143,13 +156,21 @@ def run_master_comparison() -> pd.DataFrame:
             "test_roc_auc": round(float(t_rocauc), 4),
         }
 
-        # Recall at FPR budgets
+        # Test ROC points describe ranking. Validation thresholds simulate deployment.
         for fpr in fpr_budgets:
             pct_str = f"{fpr * 100:.1f}%"
             rec_val = recall_at_fpr(y_val, sv, fpr)
             rec_test = recall_at_fpr(y_test, st, fpr)
             row[f"val_recall_fpr_{pct_str}"] = round(float(rec_val), 4)
             row[f"test_recall_fpr_{pct_str}"] = round(float(rec_test), 4)
+        policy = threshold_policies_fpr(y_val, sv, y_test, st, fpr_budgets)
+        policy.insert(0, "model_key", m)
+        policy["test_fpr"] = policy["FP"] / np.count_nonzero(y_test == 0)
+        for result in policy.itertuples():
+            pct_str = f"{result.fpr_budget:.1%}"
+            row[f"test_recall_frozen_{pct_str}"] = round(result.recall, 4)
+            row[f"test_fpr_frozen_{pct_str}"] = round(result.test_fpr, 6)
+        policies.append(policy)
 
         # Precision at review capacities
         for cap in cap_budgets:
@@ -169,6 +190,9 @@ def run_master_comparison() -> pd.DataFrame:
     df = pd.DataFrame(rows).sort_values("test_pr_auc", ascending=False)
     out_csv = ROOT / "results/tables/final_comparison_phase2.csv"
     df.to_csv(out_csv, index=False)
+    pd.concat(policies, ignore_index=True).to_csv(
+        ROOT / "results/tables/final_thresholds_phase2.csv", index=False
+    )
     print(f"[final_phase2] Saved {out_csv} ({len(df)} models)")
 
     # ── Figure 1: PR Curves ──────────────────────────────────────────────────
@@ -205,19 +229,17 @@ def run_master_comparison() -> pd.DataFrame:
     x = np.arange(len(df))
     width = 0.26
 
-    r_01 = [recall_at_fpr(y_test, s_test[m], 0.001) for m in df["model_key"]]
-    r_05 = [recall_at_fpr(y_test, s_test[m], 0.005) for m in df["model_key"]]
-    r_10 = [recall_at_fpr(y_test, s_test[m], 0.010) for m in df["model_key"]]
-
-    ax.bar(x - width, r_01, width, label="Recall @ FPR ≤ 0.1% (Tighter Budget)", color="#388E3C")
-    ax.bar(x, r_05, width, label="Recall @ FPR ≤ 0.5% (Operational Baseline)", color="#1976D2")
-    ax.bar(x + width, r_10, width, label="Recall @ FPR ≤ 1.0% (Relaxed Budget)", color="#F57C00")
+    for index, fpr in enumerate(fpr_budgets):
+        target = f"{fpr:.1%}"
+        offset = index - (len(fpr_budgets) - 1) / 2
+        ax.bar(x + width * offset, df[f"test_recall_frozen_{target}"], width,
+               label=f"{target} validation FPR target")
 
     ax.set_xticks(x)
     ax.set_xticklabels([MODEL_DISPLAY[m].replace("P1: ", "").replace("P2: ", "") for m in df["model_key"]],
                        rotation=25, ha="right", fontsize=10)
     ax.set_ylabel("Recall on Test Frauds (N=75)", fontsize=11)
-    ax.set_title("Operational Fraud Detection Recall Across False Positive Budgets", fontsize=13, fontweight="bold")
+    ax.set_title("Test Recall at Thresholds Fixed on Validation", fontsize=13, fontweight="bold")
     ax.set_ylim(0.0, 1.0)
     ax.grid(True, axis="y", linestyle=":", alpha=0.6)
     ax.legend(loc="upper right", fontsize=10)
@@ -305,7 +327,7 @@ def main():
     df = run_master_comparison()
     write_paper_numbers_p2(df)
     print("=" * 65)
-    print("  PHASE 2 MASTER COMPARISON COMPLETE — ALL ARTIFACTS VERIFIED")
+    print("  PHASE 2 MASTER COMPARISON COMPLETE")
     print("=" * 65)
 
 

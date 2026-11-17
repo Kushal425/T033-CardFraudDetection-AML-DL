@@ -1,0 +1,4 @@
+-r requirements.txt
+
+# PyTorch for Phase 2 training and model tests
+torch>=2.0

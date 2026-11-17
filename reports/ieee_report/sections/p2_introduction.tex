@@ -23,7 +23,7 @@ To answer this question, Phase~2 develops:
     \item \textbf{Undercomplete and Denoising Autoencoders:} Non-linear neural architectures that optimize reconstruction Mean Squared Error (MSE) over legitimate transactions, learning the geometry of normal spending while suppressing noise via stochastic corruption.
     \item \textbf{Decoupled Hybrid Architectures:} Three novel hybrid formulations:
     \begin{itemize}
-        \item \textbf{Hybrid 1 ($H_1$, Latent-GMM):} Estimating multimodal probability densities $-\log p(\mathbf{z})$ exclusively within the compressed autoencoder bottleneck space $\mathbf{z} \in \mathbb{R}^k$.
+        \item \textbf{Hybrid 1 ($H_1$, Latent-GMM):} Estimating multimodal probability densities $-\log p(\mathbf{z})$ exclusively within the compressed autoencoder bottleneck space $\mathbf{z} \in \Real{}^k$.
         \item \textbf{Hybrid 2 ($H_2$, Score Fusion):} Convex combination of standardized reconstruction error and ambient density scores.
         \item \textbf{Hybrid 3 ($H_3$, DAGMM-Lite):} Density estimation over joint latent embeddings augmented with non-linear reconstruction distance features.
     \end{itemize}
@@ -32,4 +32,4 @@ To answer this question, Phase~2 develops:
 \end{enumerate}
 
 \subsection{Paper Organization}
-The remainder of this report is organized as follows: Section~\ref{sec:p2_dl_literature} provides the deep learning literature review and formalizes the research gap; Section~\ref{sec:p2_dl_data_pipeline} details the deep learning data pipeline and anti-leakage invariants; Section~\ref{sec:p2_architecture} presents the autoencoder network design and regularization study; Section~\ref{sec:p2_hybrid_theory} analyzes the theoretical foundations of latent-space density modeling ($H_1$); Section~\ref{sec:p2_hybrid} introduces hybrid architectures ($H_2, H_3$) and the master ablation study; Section~\ref{sec:p2_validation} provides rigorous technical validation and paired bootstrap tests; and Section~\ref{sec:p2_results} synthesizes overall operational findings and concluding recommendations.
+The remainder of this report is organized as follows: Section~\ref{sec:p2_dl_literature} provides the deep learning literature review and formalizes the research gap; Section~\ref{sec:p2_dl_data_pipeline} details the deep learning data pipeline and anti-leakage invariants; Section~\ref{sec:p2_architecture} presents the autoencoder network design and regularization study; Section~\ref{sec:p2_hybrid_theory} analyzes the theoretical foundations of latent-space density modeling ($H_1$); Section~\ref{sec:p2_hybrid} introduces hybrid architectures ($H_2, H_3$) and the master ablation study; Section~\ref{sec:p2_validation} provides rigorous technical validation and paired bootstrap tests; and Section~\ref{sec:master_synthesis} synthesizes overall operational findings and concluding recommendations.

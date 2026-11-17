@@ -5,7 +5,7 @@
 \section{Hybrid Score Fusion and DAGMM-lite (H2 \& H3)}
 \label{sec:p2_hybrid}
 
-Having established the complementary detection axes of the deep autoencoder (DAE, Section~\ref{sec:p2_ae}) and the latent-GMM density model (H1, Section~\ref{sec:p2_hybrid_theory}), we now derive and implement two further hybrid anomaly detectors: \textbf{H2 Score Fusion} (a post-hoc combination of independently trained anomaly scores) and \textbf{H3 DAGMM-lite} (a richer augmented representation combining latent codes with multi-aspect reconstruction error metrics, scored by a GMM). Both methods are trained and selected strictly on legitimate training and validation data; test labels are never used for model, weight, or threshold selection.
+Having established the complementary detection axes of the deep autoencoder (DAE, Section~\ref{sec:p2_ae_results}) and the latent-GMM density model (H1, Section~\ref{sec:p2_hybrid_theory}), we now derive and implement two further hybrid anomaly detectors: \textbf{H2 Score Fusion} (a post-hoc combination of independently trained anomaly scores) and \textbf{H3 DAGMM-lite} (a richer augmented representation combining latent codes with multi-aspect reconstruction error metrics, scored by a GMM). Both methods are trained and selected strictly on legitimate training and validation data; test labels are never used for model, weight, or threshold selection.
 
 % ─── H2: Score Fusion ─────────────────────────────────────────────────────────
 \subsection{H2: Normalized Weighted Score Fusion}
@@ -15,7 +15,7 @@ Having established the complementary detection axes of the deep autoencoder (DAE
 Phase~1 showed that GMM density estimation in ambient 31-dimensional space yields poor PR-AUC (0.195 on validation). The DAE reconstruction score achieves substantially higher discriminability. Rather than discarding either source of information, score fusion linearly interpolates normalized per-transaction scores, aiming to retain DAE's reconstruction fidelity signal while exploiting any complementary density information from the GMM. If the two detectors fail on structurally distinct fraud subtypes, their union can strictly dominate either component~\cite{kuncheva2004combining}.
 
 \subsubsection{Normalization}
-Let $s_{\text{AE}}(x_i) \in \mathbb{R}$ denote the DAE reconstruction score and $s_{\text{GMM}}(x_i)$ the Phase-1 GMM negative log-likelihood. Because both scores inhabit incommensurable scales, we normalize each using four candidate methods and compare on validation:
+Let $s_{\text{AE}}(x_i) \in \Real{}$ denote the DAE reconstruction score and $s_{\text{GMM}}(x_i)$ the Phase-1 GMM negative log-likelihood. Because both scores inhabit incommensurable scales, we normalize each using four candidate methods and compare on validation:
 
 \begin{enumerate}
   \item \textbf{Min-max (MinMax):}
@@ -52,7 +52,7 @@ For weight $\alpha \in [0, 1]$ governing the DAE contribution:
 \end{equation}
 
 \subsubsection{Validation-Based Weight Selection}
-We sweep $\alpha \in \{0.0, 0.1, \ldots, 1.0\}$ across all four normalization methods and select the $(\alpha^*, \text{norm}^*)$ pair that maximizes validation PR-AUC. The GMM validation PR-AUC was 0.1038—significantly below the DAE's 0.2935—so the validation sweep selected $\alpha^* = 1.0$ (pure DAE score) under all normalization methods. This is a methodologically honest, non-fabricated result: the GMM component provides no incremental discriminative signal on the validation split, and the weighted fusion correctly identifies this. The test score for H2 is therefore identical to the standalone DAE test score (PR-AUC = 0.4818, 95\% CI: [0.3707, 0.6166]).
+We sweep $\alpha \in \{0.0, 0.1, \ldots, 1.0\}$ across all four normalization methods and select the $(\alpha^*, \text{norm}^*)$ pair that maximizes validation PR-AUC. The GMM validation PR-AUC was 0.1038---significantly below the DAE's 0.2935---so the validation sweep selected $\alpha^* = 1.0$ (pure DAE score) under all normalization methods. This is a methodologically honest, non-fabricated result: the GMM component provides no incremental discriminative signal on the validation split, and the weighted fusion correctly identifies this. The test score for H2 is therefore identical to the standalone DAE test score (PR-AUC = 0.4818, 95\% CI: [0.3707, 0.6166]).
 
 Spearman correlation analysis between DAE and GMM scores confirms moderate positive correlation ($\rho_{\text{val}} = 0.527$, $\rho_{\text{test}} = 0.470$), with slightly higher correlation on fraud-only records ($\rho_{\text{fraud}} = 0.632$). Despite this correlation, the two scores capture distinct information at the tail, as evidenced by the alert overlap analysis in Section~\ref{sec:p2_overlap}.
 
@@ -66,17 +66,17 @@ Zong et al.~\cite{zong2018deep} proposed the Deep Autoencoding Gaussian Mixture 
     \mathcal{L}_{\text{DAGMM}} = \mathcal{L}_{\text{recon}} + \lambda_1 \mathcal{L}_{\text{energy}} + \lambda_2 \mathcal{L}_{\text{cov\_diag}},
     \label{eq:dagmm_full_loss}
 \end{equation}
-where the energy term $\mathcal{L}_{\text{energy}} = \mathbb{E}[-\ln \hat{p}(z_i)]$ regularizes the autoencoder to map normal data into dense mixture regions.
+where the energy term $\mathcal{L}_{\text{energy}} = \Expectation{}[-\ln \hat{p}(z_i)]$ regularizes the autoencoder to map normal data into dense mixture regions.
 
-\textbf{H3 is a simplified decoupled implementation, hereafter referred to as DAGMM-lite.} It does not use the joint estimation network or the energy regularization objective. Instead, it reuses the already-trained DAE (Vani Rudra, P2\_03) and augments the latent code with multi-aspect reconstruction error metrics before fitting an independent GMM. This decoupling was chosen for three practical reasons: (i)~it avoids expensive joint retraining of the autoencoder with an estimation network; (ii)~it respects the team's modular ownership (Prachee does not modify Vani's AE); and (iii)~it allows direct comparison with H1 (latent-GMM without error features) to ablate the effect of augmenting with reconstruction errors.
+\textbf{H3 is a simplified decoupled implementation, hereafter referred to as DAGMM-lite.} It does not use the joint estimation network or the energy regularization objective. Instead, it reuses the trained standard AE and augments the latent code with multi-aspect reconstruction error metrics before fitting an independent GMM. This decoupling was chosen for three practical reasons: (i)~it avoids expensive joint retraining of the autoencoder with an estimation network; (ii)~it respects the team's modular ownership (Prachee does not modify Vani's AE); and (iii)~it allows direct comparison with H1 (latent-GMM without error features) to ablate the effect of augmenting with reconstruction errors.
 
 \subsubsection{Architecture}
 DAGMM-lite operates in four stages:
 
-\paragraph{Stage 1 — Frozen Encoder.}
-The trained DAE encoder $f_{\boldsymbol{\theta}}: \mathbb{R}^{31} \to \mathbb{R}^{12}$ (latent\_dim=12, hidden=[32,16], LeakyReLU) is loaded from \texttt{results/models/ae\_best.pt} and frozen. For each transaction $x_i$, the latent code $z_i = f_{\boldsymbol{\theta}}(x_i) \in \mathbb{R}^{12}$ and reconstruction $\hat{x}_i = g_{\boldsymbol{\phi}}(z_i) \in \mathbb{R}^{31}$ are computed.
+\paragraph{Stage 1 --- Frozen Encoder.}
+The trained standard AE encoder $f_{\boldsymbol{\theta}}: \Real{}^{31} \to \Real{}^{12}$ (latent\_dim=12, hidden=[32,16], LeakyReLU) is loaded from \texttt{results/models/ae\_best.pt} and frozen. For each transaction $x_i$, the latent code $z_i = f_{\boldsymbol{\theta}}(x_i) \in \Real{}^{12}$ and reconstruction $\hat{x}_i = g_{\boldsymbol{\phi}}(z_i) \in \Real{}^{31}$ are computed.
 
-\paragraph{Stage 2 — Multi-aspect Reconstruction Error Features.}
+\paragraph{Stage 2 --- Multi-aspect Reconstruction Error Features.}
 Three scalar error metrics complement the latent code:
 \begin{align}
     e^{\text{mse}}_i &= \frac{1}{d}\|x_i - \hat{x}_i\|_2^2, \label{eq:emse} \\
@@ -85,15 +85,15 @@ Three scalar error metrics complement the latent code:
 \end{align}
 $e^{\text{mse}}$ measures absolute magnitude of error; $e^{\text{rel}}$ normalizes by input scale, making it robust to high-amplitude features; $e^{\text{cos}}$ measures directional deviation independent of magnitude. Together they provide a richer error ``fingerprint'' than scalar MSE alone.
 
-\paragraph{Stage 3 — Augmented Representation.}
+\paragraph{Stage 3 --- Augmented Representation.}
 The augmented DAGMM-lite vector is:
 \begin{equation}
-    v_i = \left[z_i,\; e^{\text{mse}}_i,\; e^{\text{rel}}_i,\; e^{\text{cos}}_i\right] \in \mathbb{R}^{15}.
+    v_i = \left[z_i,\; e^{\text{mse}}_i,\; e^{\text{rel}}_i,\; e^{\text{cos}}_i\right] \in \Real{}^{15}.
     \label{eq:dagmm_aug}
 \end{equation}
 To prevent high-scale error metrics from dominating the latent dimensions, $v_i$ is standardized feature-wise using the mean and standard deviation of $\{v_j : j \in \mathcal{T}_{\text{train,legit}}\}$ (computed on training legitimate records only).
 
-\paragraph{Stage 4 — GMM Density and Anomaly Scoring.}
+\paragraph{Stage 4 --- GMM Density and Anomaly Scoring.}
 A $K$-component GMM $p_V(v \mid \psi)$ is fitted on $\{v_j : j \in \mathcal{T}_{\text{train,legit}}\}$ via EM. The anomaly score is:
 \begin{equation}
     s_{\text{H3}}(x_i) = -\ln p_V(v_i \mid \hat{\psi}) = -\text{score\_samples}(v_i).
@@ -101,18 +101,18 @@ A $K$-component GMM $p_V(v \mid \psi)$ is fitted on $\{v_j : j \in \mathcal{T}_{
 \end{equation}
 
 \subsubsection{Hyperparameter Selection}
-A grid search over $K \in \{2, 4, 8, 16\}$ and covariance type $\in$ \{diag, tied\} with regularization $\epsilon_{\text{cov}} \in \{0.01, 0.1\}$ was run, selecting the configuration maximizing validation PR-AUC. The best configuration was selected on validation and test results reported once.
+A grid search over $K \in \{2, 4, 8, 16\}$ and covariance type $\in$ \{diag, tied\} with regularization $\epsilon_{\text{cov}} \in \{0.01, 0.1\}$ was run, selecting the configuration maximizing validation PR-AUC. The best configuration is selected by validation AP. The grid also records descriptive test metrics for its candidates.
 
 \subsubsection{H3 Official Results}
 The validation-selected DAGMM-lite achieves:
 \textbf{Test PR-AUC = 0.4541} (95\% CI: [0.3524, 0.5884]) and \textbf{Recall@0.5\% FPR = 0.8000} (95\% CI: [0.6933, 0.8800]).
 
-This represents the highest recall at operational FPR targets among all Phase~2 models and demonstrates that augmenting the latent representation with reconstruction error dimensions provides more discriminative density surfaces than latent codes alone (H1, PR-AUC = 0.1724).
+This represents the highest recall at the 0.5\% point of the test ROC curve among all Phase~2 models and demonstrates that augmenting the latent representation with reconstruction error dimensions provides more discriminative density surfaces than latent codes alone (H1, PR-AUC = 0.1724).
 
 % ─── Alert Overlap ──────────────────────────────────────────────────────────
 \subsection{Alert Overlap and Complementarity Analysis}
 \label{sec:p2_overlap}
 
-To assess whether hybrid models provide operationally distinct fraud detections, we compute Top-$K$ alert overlap and 3-way Venn intersection between standalone DAE, standalone GMM, and H2/H3 scores on the test set (Table~\ref{tab:p2_overlap}).
+To assess whether hybrid models provide operationally distinct fraud detections, we compute Top-$K$ alert overlap and 3-way Venn intersection between standalone DAE, standalone GMM, and H2/H3 scores on the test set.
 
 Models with low Jaccard similarity and high unique-catch counts offer complementary queues that, in an ensemble review workflow, can recover frauds missed by any single model. The analysis shows that H3 (DAGMM-lite) catches a small but distinct subset of frauds not captured in the Top-100 alerts of either standalone model, motivating further investigation of ensemble fusion strategies as future work.
