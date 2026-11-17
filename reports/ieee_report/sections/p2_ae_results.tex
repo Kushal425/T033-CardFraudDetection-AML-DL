@@ -51,6 +51,7 @@ the official score arrays (\texttt{ae\_\{val,test\}.npy},
 \label{tab:ae_5seed}
 \centering
 \footnotesize
+\resizebox{\columnwidth}{!}{%
 \begin{tabular}{lcccc}
 \toprule
 \textbf{Model / Split} & \textbf{PR-AUC} & \textbf{ROC-AUC} & \textbf{Rec@0.1\%} & \textbf{Rec@0.5\%} \\
@@ -63,7 +64,8 @@ DAE (5-seed Val)  & $0.279 \pm 0.169$ & $0.938 \pm 0.016$ & $0.375 \pm 0.316$ & 
 DAE (5-seed Test) & $0.393 \pm 0.143$ & $0.936 \pm 0.016$ & $0.565 \pm 0.173$ & $0.765 \pm 0.016$ \\
 DAE (Median Test) & $0.48183$         & $0.93216$         & $0.70667$         & $0.77333$ \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table}
 
 Two key findings emerge.  First, DAE substantially outperforms standard AE in
@@ -98,6 +100,7 @@ $0.04623$.
 \label{tab:ae_reg}
 \centering
 \footnotesize
+\resizebox{\columnwidth}{!}{%
 \begin{tabular}{lcccc}
 \toprule
 \textbf{Configuration} & \textbf{Val PR-AUC} & \textbf{Rec@0.1\%} & \textbf{Val MSE} & \textbf{Train--Val Gap} \\
@@ -111,7 +114,8 @@ $+ \text{BatchNorm}$         & $0.18399$ & $0.38596$ & $0.44611$ & $0.15128$ \\
 $+ L_1 \text{ latent } (10^{-3})$ & $\mathbf{0.30169}$ & $\mathbf{0.63158}$ & $\mathbf{0.40912}$ & $\mathbf{0.13422}$ \\
 All combined (dropout+DAE)   & $0.06980$ & $0.01754$ & $0.71362$ & $0.16587$ \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table}
 
 % ─── 4. Diagnostics, Sanity Checks & Runtime ─────────────────────────────────

@@ -324,7 +324,10 @@ def ablation_training_size() -> pd.DataFrame:
             df_src = df_src.iloc[:, 1:]
         if "val_pr_auc" not in df_src.columns:
             continue
-        df_src = df_src.copy()
+        # The five-seed CSV ends with a formatted mean/std row.
+        df_src = df_src.loc[pd.to_numeric(df_src["seed"], errors="coerce").notna()].copy()
+        if df_src.empty:
+            continue
         df_src["val_pr_auc"] = pd.to_numeric(df_src["val_pr_auc"], errors="coerce")
         df_src["test_pr_auc"] = pd.to_numeric(df_src["test_pr_auc"], errors="coerce") if "test_pr_auc" in df_src.columns else float("nan")
         rows.append({
@@ -332,11 +335,11 @@ def ablation_training_size() -> pd.DataFrame:
             "n_train_legit": 170524,
             "n_seeds": len(df_src),
             "val_pr_auc_mean": float(df_src["val_pr_auc"].mean()),
-            "val_pr_auc_std": float(df_src["val_pr_auc"].std()),
+            "val_pr_auc_std": float(df_src["val_pr_auc"].std(ddof=0)),
             "val_pr_auc_min": float(df_src["val_pr_auc"].min()),
             "val_pr_auc_max": float(df_src["val_pr_auc"].max()),
             "test_pr_auc_mean": float(df_src["test_pr_auc"].mean()) if "test_pr_auc" in df_src.columns else float("nan"),
-            "test_pr_auc_std": float(df_src["test_pr_auc"].std()) if "test_pr_auc" in df_src.columns else float("nan"),
+            "test_pr_auc_std": float(df_src["test_pr_auc"].std(ddof=0)),
             "note": "Seed stability over 5 seeds; full training set used (n=170,524 legit records)",
         })
 

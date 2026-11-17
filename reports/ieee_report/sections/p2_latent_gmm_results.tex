@@ -6,12 +6,13 @@ This section reports the empirical evaluation of Hybrid H1 (latent-space Gaussia
 \subsection{Configuration Selection: BIC vs.\ Validation PR-AUC}
 \label{subsec:latentgmm_selection}
 
-We evaluated a structured grid over covariance structures $\mathcal{C} = \{\mathrm{full}, \mathrm{tied}, \mathrm{diag}, \mathrm{spherical}\}$, component counts $K \in \{1, 2, 4, 8, 12, 16, 20, 24\}$, and covariance regularization $\varepsilon \in \{10^{-6}, 10^{-4}, 10^{-2}, 10^{-1}\}$ on latent representations $\mathbf{z} \in \mathbb{R}^{12}$ extracted from \texttt{ae\_best.pt} (undercomplete AE with hidden widths $[32, 16]$ and LeakyReLU bottleneck, Section~\ref{sec:p2_ae_results}). Table~\ref{tab:latentgmm_selection} contrasts unsupervised BIC selection \cite{schwarz1978estimating,akaike1974new} against supervised validation PR-AUC selection.
+We evaluated a structured grid over covariance structures $\mathcal{C} = \{\mathrm{full}, \mathrm{tied}, \mathrm{diag}, \mathrm{spherical}\}$, component counts $K \in \{1, 2, 4, 8, 12, 16, 20, 24\}$, and covariance regularization $\varepsilon \in \{10^{-6}, 10^{-4}, 10^{-2}, 10^{-1}\}$ on latent representations $\mathbf{z} \in \Real{}^{12}$ extracted from \texttt{ae\_best.pt} (undercomplete AE with hidden widths $[32, 16]$ and LeakyReLU bottleneck, Section~\ref{sec:p2_ae_results}). Table~\ref{tab:latentgmm_selection} contrasts unsupervised BIC selection \cite{schwarz1978estimating,akaike1974new} against supervised validation PR-AUC selection.
 
 \begin{table}[!t]
 \centering
-\caption{Latent-GMM Configuration Selection Criteria on \texttt{ae\_best.pt} ($d_z = 12$)}
+\caption{Latent-GMM configuration selection using the standard AE ($d_z=12$)}
 \label{tab:latentgmm_selection}
+\resizebox{\columnwidth}{!}{%
 \begin{tabular}{lcccccr}
 \toprule
 Selection Rule & Cov. & $K$ & $\varepsilon$ & Params & Val BIC & Val PR-AUC \\
@@ -20,7 +21,8 @@ Min Train-Legit BIC & full & 16 & $10^{-6}$ & 1,455 & 1,286,219 & 0.0520 \\
 Min Val-Legit BIC   & full & 16 & $10^{-2}$ & 1,455 & 1,217,896 & 0.0575 \\
 Max Val PR-AUC      & diag & 12 & $10^{-2}$ &   299 & 1,716,652 & \textbf{0.1510} \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table}
 
 Consistent with the density--anomaly mismatch analysis of Chandola et~al.~\cite{chandola2009anomaly} and Aggarwal~\cite{aggarwal2017outlier}, pure unsupervised BIC favors a high-capacity $\mathrm{full}$-covariance mixture ($K=16$, $1{,}455$ free parameters) that achieves lower held-out legitimate BIC ($1{,}217{,}896$ vs.\ $1{,}716{,}652$) but reaches only $0.0575$ validation PR-AUC ($0.5088$ Recall@0.5\%~FPR). Constraining covariance to $\mathrm{diag}$ with $K=12$ and $\varepsilon = 10^{-2}$ reduces the parameter count by $4.87\times$ (to $299$ parameters) while raising selection-split validation PR-AUC to $0.1510$ ($0.7193$ Recall@0.5\%~FPR), as illustrated in Fig.~\ref{fig:latentgmm_aic_bic}.
@@ -28,7 +30,7 @@ Consistent with the density--anomaly mismatch analysis of Chandola et~al.~\cite{
 \begin{figure}[!t]
 \centering
 \includegraphics[width=\linewidth]{results/figures/latentgmm_aic_bic.png}
-\caption{Latent-GMM grid search over component count $K$ and covariance structure on \texttt{ae\_best.pt} ($d_z=12$), contrasting unsupervised information criteria (AIC/BIC) with validation PR-AUC.}
+\caption{Latent-GMM grid search over component count $K$ and covariance structure on the standard AE ($d_z=12$), contrasting unsupervised information criteria (AIC/BIC) with validation PR-AUC.}
 \label{fig:latentgmm_aic_bic}
 \end{figure}
 
@@ -41,6 +43,7 @@ Refitting the validation-selected configuration ($\mathrm{diag}$, $K=12$, $\vare
 \centering
 \caption{Test-Set Comparison Against Phase~1 and Phase~2 Parent Models (95\% Paired Bootstrap CIs)}
 \label{tab:latentgmm_parents}
+\resizebox{\columnwidth}{!}{%
 \begin{tabular}{lcccc}
 \toprule
 Model & Val PR & Test PR-AUC [CI] & ROC-AUC & Rec@0.5\% [CI] \\
@@ -51,7 +54,8 @@ Phase~2 AE (\texttt{ae\_best}) & 0.2272 & 0.3574 [0.2618, 0.4848] & 0.9021 & 0.6
 Phase~2 DAE (\texttt{ae\_dae}) & 0.2935 & 0.4818 [0.3707, 0.6166] & 0.9322 & \textbf{0.7733} [0.6667, 0.8667] \\
 Phase~1 PCA            & 0.7066 & \textbf{0.7425} [0.6415, 0.8368] & 0.9303 & \textbf{0.7733} [0.6667, 0.8667] \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table}
 
 Table~\ref{tab:latentgmm_parents} reveals an instructive metric divergence. Paired bootstrap testing shows H1's test PR-AUC is significantly lower than all four parent baselines ($\Delta = -0.0955$ vs.\ Phase~1 GMM, $[-0.1923, -0.0185]$; $\Delta = -0.1849$ vs.\ AE, $[-0.2935, -0.0915]$; $\Delta = -0.3094$ vs.\ DAE, $[-0.4162, -0.2259]$; $\Delta = -0.5701$ vs.\ PCA, $[-0.6311, -0.4948]$). Yet at the operational $0.5\%$ FPR alert budget, H1 achieves the highest test ROC-AUC ($0.9398$) and improves test Recall@0.5\%~FPR by $+8.00$ percentage points over Phase~1 GMM ($0.7467$ vs.\ $0.6667$) and $+6.67$ points over its own encoder parent AE ($0.7467$ vs.\ $0.6800$). Fig.~\ref{fig:latentgmm_nll_dist} displays the separation between legitimate and fraud NLL distributions.
@@ -110,6 +114,7 @@ Using Vani's latent-dimension ablation checkpoints ($k \in \{2, 4, 8, 16\}$) alo
 \centering
 \caption{Best Latent-GMM Configuration per Bottleneck Dimension $k$ (Mean $\pm$ Std Across 3 Seeds, $\varepsilon = 10^{-4}$)}
 \label{tab:ablation_gmm}
+\resizebox{\columnwidth}{!}{%
 \begin{tabular}{lccccc}
 \toprule
 Bottleneck $k$ & Best Cov, $K$ & Params & Val PR-AUC & Test PR-AUC & Test Rec@0.5\% \\
@@ -121,7 +126,8 @@ $k=8$  & full, 16  & 719 & $0.0073 \pm 0.0006$ & $0.0113 \pm 0.0016$ & 0.0222 \\
 $k=12$ (\texttt{ae\_best}) & tied, 16 & 285 & $0.1404 \pm 0.0251$ & $0.2443 \pm 0.0260$ & 0.7422 \\
 $k=16$ & tied, 16  & 407 & \textbf{0.2637} $\pm$ 0.0391 & \textbf{0.4149} $\pm$ 0.0356 & 0.7733 \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table}
 
 \begin{figure}[!t]

@@ -9,7 +9,6 @@ comparison, writes:
   - results/tables/paper_numbers.tex           (LaTeX \\newcommand macros)
   - results/figures/final_pr_curves.png        (all-model PR curves)
   - results/figures/final_recall_at_fpr.png    (bar chart recall@FPR budgets)
-  - docs/FINAL_AUDIT.md                        (integration audit log)
 
 No numbers are fabricated — every value is computed from the .npy score files.
 """

@@ -10,7 +10,7 @@ relying on delayed fraud labels, we implement both a symmetric Undercomplete
 Autoencoder (AE) and a Denoising Autoencoder (DAE).  Consistent with Phase~1
 (Sec.~\ref{sec:p2_dl_data_pipeline}), all neural models are trained
 exclusively on the $170{,}524$ legitimate training transactions
-($\mathbf{X}_{\text{train,legit}} \in \mathbb{R}^{170524 \times 31}$),
+($\mathbf{X}_{\text{train,legit}} \in \Real{}^{170524 \times 31}$),
 early-stopped strictly on the $56{,}904$ validation-legitimate records, and
 scored by per-sample Mean Squared Error (MSE) so that higher values denote
 greater abnormality.
@@ -19,18 +19,18 @@ greater abnormality.
 \subsection{Encoder--Decoder Formulation and Objective}
 \label{sec:ae_formulation}
 
-Let $\mathbf{x} \in \mathbb{R}^{d}$ ($d = 31$ for the base feature set) denote
+Let $\mathbf{x} \in \Real{}^{d}$ ($d = 31$ for the base feature set) denote
 a standardized transaction vector.  An autoencoder consists of an encoder
-$f_{\boldsymbol{\theta}} : \mathbb{R}^{d} \to \mathbb{R}^{k}$ mapping input
+$f_{\boldsymbol{\theta}} : \Real{}^{d} \to \Real{}^{k}$ mapping input
 vectors into a low-dimensional bottleneck code
 $\mathbf{z} = f_{\boldsymbol{\theta}}(\mathbf{x})$, and a symmetric decoder
-$g_{\boldsymbol{\phi}} : \mathbb{R}^{k} \to \mathbb{R}^{d}$ producing the
+$g_{\boldsymbol{\phi}} : \Real{}^{k} \to \Real{}^{d}$ producing the
 reconstruction $\hat{\mathbf{x}} = g_{\boldsymbol{\phi}}(\mathbf{z})$.
 Parameters $(\boldsymbol{\theta}, \boldsymbol{\phi})$ are learned by minimizing
 the expected reconstruction MSE over the legitimate training distribution:
 \begin{equation}
     \min_{\boldsymbol{\theta}, \boldsymbol{\phi}} \;
-    \mathbb{E}_{\mathbf{x} \sim P_{\text{legit}}}
+    \Expectation{}_{\mathbf{x} \sim P_{\text{legit}}}
     \left[ \frac{1}{d} \, \bigl\| \mathbf{x} - g_{\boldsymbol{\phi}}\bigl(f_{\boldsymbol{\theta}}(\mathbf{x})\bigr) \bigr\|_2^2 \right]
     + \lambda \, \|\boldsymbol{\theta}\|_2^2 + \lambda \, \|\boldsymbol{\phi}\|_2^2,
     \label{eq:ae_objective}
@@ -51,7 +51,7 @@ per-sample MSE across coordinates:
 while individual coordinate residuals $e_j(\mathbf{x}) = (x_j - \hat{x}_j)^2$
 provide feature-level interpretability for flagged alerts.  Additionally, the
 bottleneck representation $\mathbf{z} = f_{\boldsymbol{\theta}}(\mathbf{x}) \in
-\mathbb{R}^{k}$ is exposed via the \texttt{encode()} interface for downstream
+\Real{}^{k}$ is exposed via the \texttt{encode()} interface for downstream
 latent-space GMM density estimation ($H_1$) and hybrid scoring ($H_2, H_3$).
 
 % ─── 2. Undercompleteness, Bias-Variance, and PCA Equivalence ────────────────
@@ -62,7 +62,7 @@ latent-space GMM density estimation ($H_1$) and hybrid scoring ($H_2, H_3$).
 If $k \ge d$ (or if network capacity is unconstrained), minimizing
 Eq.~\eqref{eq:ae_objective} permits the trivial identity mapping
 $g_{\boldsymbol{\phi}}(f_{\boldsymbol{\theta}}(\mathbf{x})) \approx \mathbf{x}$
-across the entire ambient space $\mathbb{R}^d$.  In that degenerate regime,
+across the entire ambient space $\Real{}^d$.  In that degenerate regime,
 both legitimate transactions and fraudulent outliers are reconstructed with
 near-zero error, collapsing anomaly contrast.  Enforcing $k < d$ creates an
 information bottleneck: the network has only $k$ degrees of freedom to encode
@@ -71,10 +71,10 @@ normal spending correlations, forcing high error on off-manifold transactions.
 \textbf{Bias--variance trade-off in $k$.}
 Selecting $k$ balances reconstruction fidelity against anomaly discrimination:
 \begin{itemize}
-    \item \emph{Too small ($k = 2$):} High bias / underfitting — legitimate
+    \item \emph{Too small ($k = 2$):} High bias / underfitting --- legitimate
           transactions cannot be faithfully reconstructed, elevating baseline
           noise and obscuring genuine fraud spikes.
-    \item \emph{Too large ($k \ge 16$):} Low bias / over-generalization — the
+    \item \emph{Too large ($k \ge 16$):} Low bias / over-generalization --- the
           decoder captures high-order variation including regions populated by
           fraudulent records, reducing separation.
 \end{itemize}
@@ -109,7 +109,7 @@ input with isotropic Gaussian noise during training:
 and minimizing the reconstruction error against the \emph{clean} target:
 \begin{equation}
     \mathcal{L}_{\text{DAE}}(\boldsymbol{\theta}, \boldsymbol{\phi})
-    = \mathbb{E}_{\mathbf{x}, \boldsymbol{\varepsilon}}
+    = \Expectation{}_{\mathbf{x}, \boldsymbol{\varepsilon}}
     \left[ \frac{1}{d} \, \bigl\| \mathbf{x} - g_{\boldsymbol{\phi}}\bigl(f_{\boldsymbol{\theta}}(\tilde{\mathbf{x}})\bigr) \bigr\|_2^2 \right].
     \label{eq:dae_loss}
 \end{equation}
@@ -129,8 +129,8 @@ it exhibits two structural blind spots that motivate Phase~2 hybrid models:
 \begin{enumerate}
     \item \textbf{In-manifold (on-subspace) anomalies:} A fraudulent transaction
           whose feature vector happens to lie on or near the learned $k$-dimensional
-          manifold — for example, a legitimate-looking coordinate combination in a
-          sparse tail region — achieves small $\|\mathbf{x} - \hat{\mathbf{x}}\|_2^2$
+          manifold --- for example, a legitimate-looking coordinate combination in a
+          sparse tail region --- achieves small $\|\mathbf{x} - \hat{\mathbf{x}}\|_2^2$
           and goes undetected.  Modeling latent density $-\log p(\mathbf{z})$
           directly addresses this gap.
     \item \textbf{High-variance coordinate dominance:} Unweighted MSE scales
